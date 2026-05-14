@@ -165,7 +165,8 @@ async def ingest_loop_debug(session: aiohttp.ClientSession, config: dict):
             if rows:
                 # async with pool.acquire() as conn:
                 #     await conn.executemany(UPSERT_SQL, rows)
-                logger.info("worker.inserted source=%s rows=%d newest=%s", source, len(rows), rows[0][3])
+                logger.info("worker.inserted source=%s rows=%d", source, len(rows))
+                logger.info("debug.printrow \n\tsource=%s\n\ttitle=%s\n\tbody=%s", rows[0][2], rows[0][3], rows[0][4])
             else:
                 logger.info("worker.empty source=%s", source)
         except Exception as exc:
