@@ -1,25 +1,38 @@
-# PostgreSQL (pgvector) container blueprint
+# WASPADA: RSS Scraping and Research Pipeline
 
-This workspace contains a database container blueprint and example ingestion scripts for high-volume web scraping. It uses `pgvector/pgvector:pg16` and enables `uuid-ossp`, `vector` (pgvector), and `pg_trgm` extensions.
+This project is a high-performance RSS scraping engine designed to collect and store news articles and social media posts for further analysis. The scraped data is stored in a PostgreSQL database and will be fed into an LLM (Large Language Model) for advanced research and insights (WIP).
 
-**Files added**
+## Features
 
-- `docker-compose.yml`: service for PostgreSQL 16 (pgvector image), mounts `db/init` for initialization SQL and forces `timezone='UTC'`.
-- `db/init/init.sql`: creates extensions, tables `news_articles` and `social_posts`, and the necessary indexes (B-Tree and GIN).
-- `scripts/psycopg2_upsert.py`: synchronous ingestion sample using `psycopg2` with `ON CONFLICT (url) DO UPDATE` for `news_articles`.
-- `scripts/asyncpg_upsert.py`: async ingestion sample using `asyncpg` for `social_posts` showing JSONB array usage.
-- `rss_engine.py`: async RSS ingestion engine (aiohttp + feedparser + asyncpg).
+- **RSS Scraping Engine**: Asynchronous scraping of RSS feeds using `aiohttp`, `feedparser`, and `asyncpg`.
+- **Database**: PostgreSQL 16 with extensions for semantic search (`pgvector`), UUID generation (`uuid-ossp`), and text search (`pg_trgm`).
+- **Data Models**:
+  - `news_articles`: Stores articles with metadata like `source`, `title`, `body`, `tags`, and timestamps.
+  - `social_posts`: Stores social media posts with engagement metrics and media URLs.
+- **Future Integration**: Data pipeline to feed scraped content into an LLM for research and analysis (WIP).
+
+## Files
+
+- `docker-compose.yml`: Service for PostgreSQL 16 (pgvector image), mounts `db/init` for initialization SQL and forces `timezone='UTC'`.
+- `db/init/init.sql`: Creates extensions, tables `news_articles` and `social_posts`, and the necessary indexes (B-Tree and GIN).
+- `scripts/psycopg2_upsert.py`: Synchronous ingestion sample using `psycopg2` with `ON CONFLICT (url) DO UPDATE` for `news_articles`.
+- `scripts/asyncpg_upsert.py`: Async ingestion sample using `asyncpg` for `social_posts` showing JSONB array usage.
+- `rss_engine.py`: Async RSS ingestion engine (aiohttp + feedparser + asyncpg).
 - `requirements.txt`: Python dependencies for the async RSS engine.
 
-**How to run**
+## How to Run
 
-1. Start the DB container (from project root):
+1. **Start the Database**:
 
 ```bash
 docker-compose up -d
 ```
 
-2. Wait for the DB to be healthy, then run examples (adjust `DATABASE_URL` env var if needed):
+2. **Wait for the Database to be Healthy**:
+
+Ensure the database is ready before running scripts.
+
+3. **Run Example Scripts**:
 
 ```bash
 export DATABASE_URL=postgresql://postgres:examplepassword@localhost:5432/waspada
@@ -27,7 +40,9 @@ python3 scripts/psycopg2_upsert.py
 python3 scripts/asyncpg_upsert.py
 ```
 
-3. Run the async RSS engine (after installing deps):
+4. **Run the RSS Engine**:
+
+Install dependencies and start the engine:
 
 ```bash
 python3 -m pip install -r requirements.txt
@@ -41,27 +56,28 @@ Optional one-shot run:
 RUN_ONCE=1 python3 rss_engine.py
 ```
 
-**Notes / Best practices**
+## Notes / Best Practices
 
-- Timezone: All timestamp columns are `TIMESTAMPTZ`. In Python, always pass timezone-aware datetimes (`datetime.timezone.utc`). The container is configured to use UTC (`timezone='UTC'`).
-- Upserts: Use `ON CONFLICT (url) DO UPDATE` for `news_articles` ingestion to avoid duplicate scrapes.
-- JSONB operators: When filtering by engagement metrics, use `->>` and cast to integer, e.g.:
+- **Timezone**: All timestamp columns are `TIMESTAMPTZ`. In Python, always pass timezone-aware datetimes (`datetime.timezone.utc`). The container is configured to use UTC (`timezone='UTC'`).
+- **Upserts**: Use `ON CONFLICT (url) DO UPDATE` for `news_articles` ingestion to avoid duplicate scrapes.
+- **JSONB Operators**: When filtering by engagement metrics, use `->>` and cast to integer, e.g.:
 
 ```sql
 SELECT * FROM social_posts WHERE (engagement ->> 'likes')::int > 100;
 ```
 
-- Array operators: When filtering by tags or media URLs use `= ANY()` or `&&`, e.g.:
+- **Array Operators**: When filtering by tags or media URLs use `= ANY()` or `&&`, e.g.:
 
 ```sql
 SELECT * FROM news_articles WHERE 'politics' = ANY(tags);
 SELECT * FROM social_posts WHERE media_urls && ARRAY['https://.../image.jpg'];
 ```
 
-- Indexes: GIN indexes are used for `tags` (array) and `engagement` (JSONB). B-Tree indexes are used for common filtering columns.
+- **Indexes**: GIN indexes are used for `tags` (array) and `engagement` (JSONB). B-Tree indexes are used for common filtering columns.
 
-If you want, I can:
+## Future Work
 
-- add a tiny test harness to validate the schema after container start,
-- add a `Makefile` or `docker-compose` profile for production settings,
-- or wire a small ingestion worker demonstrating batch upserts and backoff.
+- **LLM Integration**: Develop a pipeline to feed scraped data into an LLM for advanced research and insights.
+- **Schema Validation**: Add a test harness to validate the database schema after container start.
+- **Production Settings**: Add a `Makefile` or `docker-compose` profile for production deployments.
+- **Batch Processing**: Implement a worker for batch upserts with retry/backoff logic.
