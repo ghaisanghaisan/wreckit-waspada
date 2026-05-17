@@ -8,13 +8,118 @@ import aiohttp
 import asyncpg
 import feedparser
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:examplepassword@localhost:5432/waspada",
-)
+DB_USER = os.getenv('POSTGRES_USER', 'postgres')
+DB_PASS = os.getenv('POSTGRES_PASSWORD', 'gulingkanan')
+DB_HOST = os.getenv('POSTGRES_HOST', 'localhost')
+DB_PORT = os.getenv('POSTGRES_PORT', '5432')
+DB_NAME = os.getenv('POSTGRES_DB', 'waspada')
+
+DB_DSN = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+print(DB_DSN)
+
+keywords_polri = [
+    # Nama Instansi & Singkatan
+    "polri", 
+    "Kementerian Pertahanan", 
+    "Kemenhan", 
+    "Kementerian Pertahanan Republik Indonesia", 
+    "polri RI",
+    
+    # Jabatan & Pejabat
+    "Menhan", 
+    "Menteri Pertahanan", 
+    "Wamenhan", 
+    "Wakil Menteri Pertahanan", 
+    "Sekjen polri", 
+    "Dirjen polri",
+    
+    # Program Kerja & Isu Strategis
+    "Alutsista", 
+    "Modernisasi alutsista", 
+    "Bela Negara", 
+    "Komponen Cadangan", 
+    "Komcad", 
+    "Industri pertahanan", 
+    "Anggaran polri", 
+    "Ketahanan nasional", 
+    "Diplomasi pertahanan",
+    
+    # Mitra & Institusi Terkait
+    "polri TNI", 
+    "Defend ID", 
+    "PT Pindad", 
+    "PT PAL", 
+    "PT DI"
+]
+keywords_polri = [
+    # Nama Instansi & Singkatan
+    "Polri", 
+    "Polisi", 
+    "Mabes Polri", 
+    "Kepolisian Negara Republik Indonesia", 
+    "Korps Bhayangkara",
+    
+    # Hierarki Wilayah (Polda & Polres)
+    "Polda",        # Kepolisian Daerah
+    "Polres",       # Kepolisian Resor
+    "Polresta",     # Kepolisian Resor Kota
+    "Polsek",       # Kepolisian Sektor
+    
+    # Jabatan & Pejabat Utama
+    "Kapolri", 
+    "Wakapolri", 
+    "Kapolda", 
+    "Kapolres", 
+    "Kapolsek", 
+    "Kadiv Humas Polri",
+    
+    # Korps & Divisi Spesifik
+    "Bareskrim",    # Badan Reserse Kriminal
+    "Korlantas",    # Korps Lalu Lintas
+    "Brimob",       # Korps Brigade Mobil
+    "Densus 88",    # Detasemen Khusus 88 Antiteror
+    "Propam",       # Profesi dan Pengamanan
+    "Ditlantas",    # Direktorat Lalu Lintas
+    "Ditreskrimsus",# Direktorat Reserse Kriminal Khusus
+    "Ditreskrimum", # Direktorat Reserse Kriminal Umum
+    "Polda Metro Jaya", # Polda yang paling sering masuk berita nasional
+    
+    # Isu Operasional & Tugas Polisi
+    "Kamtibmas",    # Keamanan dan ketertiban masyarakat
+    "Operasi Ketupat", 
+    "Operasi Lilin", 
+    "Operasi Zebra", 
+    "Tilang elektronik", 
+    "ETLE",
+    "Samsat",
+    "SIM Keliling"
+]
 
 CONFIGS = [
-    {"source": "detik.com", "url": "https://news.detik.com/berita/rss", "interval_seconds": 10},
+    {
+        "source": "antaranews.com",
+        "url": "https://www.antaranews.com/rss/top-news",
+        "interval_seconds": 10,
+        "keywords": keywords_polri,
+    },
+    {
+        "source": "liputan6.com",
+        "url": "https://feed.liputan6.com/rss/news",
+        "interval_seconds": 10,
+        "keywords": keywords_polri,
+    },
+    {
+        "source": "cnnindonesia.com",
+        "url": "https://www.cnnindonesia.com/nasional/rss",
+        "interval_seconds": 10,
+        "keywords": keywords_polri,
+    },
+    {
+        "source": "cnbcindonesia.com",
+        "url": "https://www.cnbcindonesia.com/news/rss",
+        "interval_seconds": 10,
+        "keywords": keywords_polri,
+    },
 ]
 
 RUN_ONCE = os.getenv("RUN_ONCE", "0") == "1"
@@ -58,8 +163,23 @@ def extract_body(entry) -> str:
     return summary or ""
 
 
-def build_rows(source: str, feed) -> list[tuple]:
+def normalize_keywords(keywords: list[str]) -> list[str]:
+    return [keyword.strip().lower() for keyword in keywords if keyword and keyword.strip()]
+
+
+def is_relevant(title: str, body: str, keywords: list[str]) -> bool:
+    if not keywords:
+        return True
+    haystack = f"{title} {body}".lower()
+    for keyword in keywords:
+        if keyword in haystack:
+            return True
+    return False
+
+
+def build_rows(source: str, feed, keywords: list[str]) -> list[tuple]:
     now = datetime.now(timezone.utc)
+    normalized_keywords = normalize_keywords(keywords)
     rows = []
     for entry in feed.entries:
         url = getattr(entry, "link", None)
@@ -68,6 +188,9 @@ def build_rows(source: str, feed) -> list[tuple]:
 
         title = getattr(entry, "title", "") or ""
         body = extract_body(entry)
+
+        if not is_relevant(title, body, normalized_keywords):
+            continue
 
         published_at = (
             to_utc_datetime(getattr(entry, "published_parsed", None))
@@ -125,20 +248,34 @@ async def ingest_loop(pool: asyncpg.Pool, session: aiohttp.ClientSession, config
     source = config["source"]
     url = config["url"]
     interval = int(config["interval_seconds"])
+    keywords = config.get("keywords", [])
 
     while True:
         logger.info("worker.wake source=%s url=%s", source, url)
         try:
             raw_xml = await fetch_xml(session, url)
             feed = await parse_feed(raw_xml)
-            rows = build_rows(source, feed)
+            rows = build_rows(source, feed, keywords)
+            fetched = len(feed.entries)
+            passed = len(rows)
 
             if rows:
                 async with pool.acquire() as conn:
                     await conn.executemany(UPSERT_SQL, rows)
-                logger.info("worker.inserted source=%s rows=%d", source, len(rows))
+                logger.info(
+                    "worker.inserted source=%s fetched=%d passed=%d inserted=%d",
+                    source,
+                    fetched,
+                    passed,
+                    len(rows),
+                )
             else:
-                logger.info("worker.empty source=%s", source)
+                logger.info(
+                    "worker.empty source=%s fetched=%d passed=%d",
+                    source,
+                    fetched,
+                    passed,
+                )
         except Exception as exc:
             logger.exception("worker.error source=%s url=%s error=%s", source, url, exc)
 
@@ -186,15 +323,15 @@ async def main():
     )
     logger.info("engine.start configs=%d", len(CONFIGS))
 
-    async with aiohttp.ClientSession() as session:
-        tasks = [asyncio.create_task(ingest_loop_debug(session, config)) for config in CONFIGS]
-        await asyncio.gather(*tasks)
-
-    # pool = await asyncpg.create_pool(dsn=DATABASE_URL, min_size=1, max_size=10)
     # async with aiohttp.ClientSession() as session:
-    #     tasks = [asyncio.create_task(ingest_loop(pool, session, config)) for config in CONFIGS]
+    #     tasks = [asyncio.create_task(ingest_loop_debug(session, config)) for config in CONFIGS]
     #     await asyncio.gather(*tasks)
-    # await pool.close()
+
+    pool = await asyncpg.create_pool(dsn=DB_DSN, min_size=1, max_size=10)
+    async with aiohttp.ClientSession() as session:
+        tasks = [asyncio.create_task(ingest_loop(pool, session, config)) for config in CONFIGS]
+        await asyncio.gather(*tasks)
+    await pool.close()
 
 
 if __name__ == "__main__":

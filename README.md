@@ -13,11 +13,11 @@ This project is a high-performance RSS scraping engine designed to collect and s
 
 ## Files
 
-- `docker-compose.yml`: Service for PostgreSQL 16 (pgvector image), mounts `db/init` for initialization SQL and forces `timezone='UTC'`.
-- `db/init/init.sql`: Creates extensions, tables `news_articles` and `social_posts`, and the necessary indexes (B-Tree and GIN).
-- `scripts/psycopg2_upsert.py`: Synchronous ingestion sample using `psycopg2` with `ON CONFLICT (url) DO UPDATE` for `news_articles`.
-- `scripts/asyncpg_upsert.py`: Async ingestion sample using `asyncpg` for `social_posts` showing JSONB array usage.
-- `rss_engine.py`: Async RSS ingestion engine (aiohttp + feedparser + asyncpg).
+- `docker-compose.yml`: Service for PostgreSQL 16 (pgvector image), mounts `database/init.sql` for initialization SQL and forces `timezone='UTC'`.
+- `database/init.sql`: Creates extensions, tables `news_articles` and `social_posts`, and the necessary indexes (B-Tree and GIN).
+- `rssengine/psycopg2_upsert.py`: Synchronous ingestion sample using `psycopg2` with `ON CONFLICT (url) DO UPDATE` for `news_articles`.
+- `rssengine/asyncpg_upsert.py`: Async ingestion sample using `asyncpg` for `social_posts` showing JSONB array usage.
+- `rssengine/rss_engine.py`: Async RSS ingestion engine (aiohttp + feedparser + asyncpg).
 - `requirements.txt`: Python dependencies for the async RSS engine.
 
 ## How to Run
@@ -36,8 +36,8 @@ Ensure the database is ready before running scripts.
 
 ```bash
 export DATABASE_URL=postgresql://postgres:examplepassword@localhost:5432/waspada
-python3 scripts/psycopg2_upsert.py
-python3 scripts/asyncpg_upsert.py
+python3 rssengine/psycopg2_upsert.py
+python3 rssengine/asyncpg_upsert.py
 ```
 
 4. **Run the RSS Engine**:
@@ -47,13 +47,13 @@ Install dependencies and start the engine:
 ```bash
 python3 -m pip install -r requirements.txt
 export DATABASE_URL=postgresql://postgres:examplepassword@localhost:5432/waspada
-python3 rss_engine.py
+python3 rssengine/rss_engine.py
 ```
 
 Optional one-shot run:
 
 ```bash
-RUN_ONCE=1 python3 rss_engine.py
+RUN_ONCE=1 python3 rssengine/rss_engine.py
 ```
 
 ## Notes / Best Practices

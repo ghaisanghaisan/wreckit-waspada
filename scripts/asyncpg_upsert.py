@@ -6,7 +6,22 @@ import asyncio
 import datetime
 import asyncpg
 
-DB_DSN = os.getenv('DATABASE_URL', 'postgresql://postgres:examplepassword@localhost:5432/waspada')
+# Load environment from .env if present
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    # python-dotenv is optional; if not installed, environment variables must be set externally
+    pass
+
+DB_USER = os.getenv('POSTGRES_USER', 'postgres')
+DB_PASS = os.getenv('POSTGRES_PASSWORD', '')
+DB_HOST = os.getenv('POSTGRES_HOST', 'localhost')
+DB_PORT = os.getenv('POSTGRES_PORT', '5432')
+DB_NAME = os.getenv('POSTGRES_DB', 'waspada')
+
+DB_DSN = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+print(DB_DSN)
 
 async def upsert_social_post(pool, post: dict):
     sql = """
