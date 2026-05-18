@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS news_articles (
   published_at TIMESTAMPTZ,
   scraped_at TIMESTAMPTZ DEFAULT now(),
   category VARCHAR(100),
+  sentiment varchar(10),
   tags TEXT[] DEFAULT ARRAY[]::text[],
   raw_html TEXT
 );

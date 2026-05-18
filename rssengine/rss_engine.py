@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import aiohttp
 import asyncpg
 import feedparser
+from transformers import pipeline
 
 DB_USER = os.getenv('POSTGRES_USER', 'postgres')
 DB_PASS = os.getenv('POSTGRES_PASSWORD', 'gulingkanan')
@@ -17,41 +18,7 @@ DB_NAME = os.getenv('POSTGRES_DB', 'waspada')
 DB_DSN = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 print(DB_DSN)
 
-keywords_polri = [
-    # Nama Instansi & Singkatan
-    "polri", 
-    "Kementerian Pertahanan", 
-    "Kemenhan", 
-    "Kementerian Pertahanan Republik Indonesia", 
-    "polri RI",
-    
-    # Jabatan & Pejabat
-    "Menhan", 
-    "Menteri Pertahanan", 
-    "Wamenhan", 
-    "Wakil Menteri Pertahanan", 
-    "Sekjen polri", 
-    "Dirjen polri",
-    
-    # Program Kerja & Isu Strategis
-    "Alutsista", 
-    "Modernisasi alutsista", 
-    "Bela Negara", 
-    "Komponen Cadangan", 
-    "Komcad", 
-    "Industri pertahanan", 
-    "Anggaran polri", 
-    "Ketahanan nasional", 
-    "Diplomasi pertahanan",
-    
-    # Mitra & Institusi Terkait
-    "polri TNI", 
-    "Defend ID", 
-    "PT Pindad", 
-    "PT PAL", 
-    "PT DI"
-]
-keywords_polri = [
+GLOBAL_KEYWORDS = [
     # Nama Instansi & Singkatan
     "Polri", 
     "Polisi", 
@@ -100,25 +67,21 @@ CONFIGS = [
         "source": "antaranews.com",
         "url": "https://www.antaranews.com/rss/top-news",
         "interval_seconds": 10,
-        "keywords": keywords_polri,
     },
     {
         "source": "liputan6.com",
         "url": "https://feed.liputan6.com/rss/news",
         "interval_seconds": 10,
-        "keywords": keywords_polri,
     },
     {
         "source": "cnnindonesia.com",
         "url": "https://www.cnnindonesia.com/nasional/rss",
         "interval_seconds": 10,
-        "keywords": keywords_polri,
     },
     {
         "source": "cnbcindonesia.com",
         "url": "https://www.cnbcindonesia.com/news/rss",
         "interval_seconds": 10,
-        "keywords": keywords_polri,
     },
 ]
 
@@ -130,11 +93,18 @@ USER_AGENT = os.getenv("USER_AGENT", "waspada-rss-bot/1.0")
 
 logger = logging.getLogger("waspada.rss_engine")
 
+SENTIMENT_PIPELINE = None
+SENTIMENT_POSITIVE = "apresiasi masyarakat, dukungan publik, kepuasan warga, pujian, kepercayaan publik, respons positif, pelayanan memuaskan, citra baik, pro-rakyat, antusiasme, kebanggaan, simpati masyarakat, sambutan hangat, harapan baru, kinerja gemilang, inovasi bermanfaat, keberpihakan pada rakyat, solusi tepat sasaran, dukungan netizen"
+SENTIMENT_NEGATIVE = "kekecewaan publik, kritik tajam, penolakan warga, protes masyarakat, kecaman, krisis kepercayaan, kinerja buruk, ketidakpuasan, tuntutan, desakan mundur, viral negatif, kemarahan netizen, keresahan warga, polemik berkepanjangan, kontroversi, rapor merah, skeptisisme, dugaan penyelewengan, kecurigaan publik, reaksi keras, blunder"
+SENTIMENT_NEUTRAL = "pengumuman resmi, sosialisasi kebijakan, agenda kegiatan, informasi faktual, laporan rutin, pernyataan prosedural, data statistik, regulasi pemerintah, kunjungan kerja, peresmian fasilitas, pelantikan pejabat, tata kelola birokrasi, seremonial, jadwal pelaksanaan, rilis pers, liputan langsung"
+
+SENTIMENT_LABELS = [SENTIMENT_POSITIVE, SENTIMENT_NEGATIVE, SENTIMENT_NEUTRAL]
+
 UPSERT_SQL = """
 INSERT INTO news_articles (
-    id, url, source, title, body, published_at, scraped_at
+    id, url, source, title, body, sentiment, published_at, scraped_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
 ON CONFLICT (url) DO NOTHING
 """
@@ -177,10 +147,40 @@ def is_relevant(title: str, body: str, keywords: list[str]) -> bool:
     return False
 
 
-def build_rows(source: str, feed, keywords: list[str]) -> list[tuple]:
+def load_sentiment_pipeline():
+    global SENTIMENT_PIPELINE
+    if SENTIMENT_PIPELINE is None:
+        logger.info("sentiment.load model=MoritzLaurer/mDeBERTa-v3-base-mnli-xnli")
+        SENTIMENT_PIPELINE = pipeline(
+            "zero-shot-classification",
+            model="MoritzLaurer/mDeBERTa-v3-base-mnli-xnli",
+        )
+
+
+def classify_sentiment(text: str) -> str:
+    if not SENTIMENT_PIPELINE:
+        raise RuntimeError("Sentiment pipeline is not initialized")
+    result = SENTIMENT_PIPELINE(text, SENTIMENT_LABELS)
+    label = result["labels"][0]
+    score = result["scores"][0]
+    
+    # Jika hasil sentiment ragu ragu e.g rata Positif, Negatif dan juga Netral
+    # if score < 0.40:
+    #     return "NETRAL"
+
+    if label == SENTIMENT_POSITIVE:
+        return "POSITIF"
+    elif label == SENTIMENT_NEGATIVE:
+        return "NEGATIF"
+    else:
+        return "NETRAL"
+
+
+async def build_rows(source: str, feed, keywords: list[str]) -> list[tuple]:
     now = datetime.now(timezone.utc)
     normalized_keywords = normalize_keywords(keywords)
     rows = []
+    sentiment_tasks = []
     for entry in feed.entries:
         url = getattr(entry, "link", None)
         if not url:
@@ -191,6 +191,9 @@ def build_rows(source: str, feed, keywords: list[str]) -> list[tuple]:
 
         if not is_relevant(title, body, normalized_keywords):
             continue
+
+        text = f"{title} {body}".strip()
+        sentiment_tasks.append(asyncio.to_thread(classify_sentiment, text))
 
         published_at = (
             to_utc_datetime(getattr(entry, "published_parsed", None))
@@ -209,6 +212,23 @@ def build_rows(source: str, feed, keywords: list[str]) -> list[tuple]:
                 now,
             )
         )
+    if sentiment_tasks:
+        sentiments = await asyncio.gather(*sentiment_tasks)
+        enriched_rows = []
+        for row, sentiment in zip(rows, sentiments):
+            enriched_rows.append(
+                (
+                    row[0],
+                    row[1],
+                    row[2],
+                    row[3],
+                    row[4],
+                    sentiment,
+                    row[5],
+                    row[6],
+                )
+            )
+        return enriched_rows
     return rows
 
 
@@ -248,16 +268,26 @@ async def ingest_loop(pool: asyncpg.Pool, session: aiohttp.ClientSession, config
     source = config["source"]
     url = config["url"]
     interval = int(config["interval_seconds"])
-    keywords = config.get("keywords", [])
+    keywords = config.get("keywords", GLOBAL_KEYWORDS)
 
     while True:
         logger.info("worker.wake source=%s url=%s", source, url)
         try:
             raw_xml = await fetch_xml(session, url)
             feed = await parse_feed(raw_xml)
-            rows = build_rows(source, feed, keywords)
+            rows = await build_rows(source, feed, keywords)
             fetched = len(feed.entries)
             passed = len(rows)
+            if rows:
+                positives = sum(1 for row in rows if row[5] == "POSITIF")
+                negatives = len(rows) - positives
+                logger.info(
+                    "sentiment.analyzed source=%s total=%d positif=%d negatif=%d",
+                    source,
+                    len(rows),
+                    positives,
+                    negatives,
+                )
 
             if rows:
                 async with pool.acquire() as conn:
@@ -291,19 +321,26 @@ async def ingest_loop_debug(session: aiohttp.ClientSession, config: dict):
     source = config["source"]
     url = config["url"]
     interval = int(config["interval_seconds"])
+    keywords = config.get("keywords", GLOBAL_KEYWORDS)
 
     while True:
         logger.info("worker.wake source=%s url=%s", source, url)
         try:
             raw_xml = await fetch_xml(session, url)
             feed = await parse_feed(raw_xml)
-            rows = build_rows(source, feed)
+            rows = await build_rows(source, feed, keywords)
 
             if rows:
                 # async with pool.acquire() as conn:
                 #     await conn.executemany(UPSERT_SQL, rows)
                 logger.info("worker.inserted source=%s rows=%d", source, len(rows))
-                logger.info("debug.printrow \n\tsource=%s\n\ttitle=%s\n\tbody=%s", rows[0][2], rows[0][3], rows[0][4])
+                logger.info(
+                    "debug.printrow \n\tsource=%s\n\ttitle=%s\n\tbody=%s\n\tsentiment=%s",
+                    rows[0][2],
+                    rows[0][3],
+                    rows[0][4],
+                    rows[0][5],
+                )
             else:
                 logger.info("worker.empty source=%s", source)
         except Exception as exc:
@@ -321,6 +358,7 @@ async def main():
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
+    load_sentiment_pipeline()
     logger.info("engine.start configs=%d", len(CONFIGS))
 
     # async with aiohttp.ClientSession() as session:
