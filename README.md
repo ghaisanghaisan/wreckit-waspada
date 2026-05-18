@@ -1,12 +1,12 @@
-WASPADA adalah platform open-source pertama di Indonesia untuk pertahanan information warfare. Sistem ini melakukan monitoring terhadap media online Indonesia, mendeteksi narasi negatif yang terkoordinasi, menganalisis sentiment dengan AI berbahasa Indonesia, dan memberikan strategi mitigasi (debunking/prebunking) yang dihasilkan oleh LLM. Dirancang sebagai SaaS yang dapat diakses oleh kementerian, BUMN, partai politik, NGO, dan jurnalis investigasi.
+# WASPADA: _Mata yang Tak Pernah Tidur_
 
-**Tagline**: _Mata yang Tak Pernah Tidur_
+WASPADA adalah platform open-source pertama di Indonesia untuk pertahanan information warfare. Sistem ini melakukan monitoring terhadap media online Indonesia, mendeteksi narasi negatif yang terkoordinasi, menganalisis sentiment dengan AI berbahasa Indonesia, dan memberikan strategi mitigasi (debunking/prebunking) yang dihasilkan oleh LLM. Dirancang sebagai SaaS yang dapat diakses oleh kementerian, BUMN, partai politik, NGO, dan jurnalis investigasi.
 
 **Problem statement**: Information warfare adalah ancaman nyata di Indonesia (pemilu disinformasi, hoax viral, foreign influence operations), namun tools enterprise seperti Meltwater dan Kazee sangat mahal dan tidak men-democratize akses. Lembaga non-pemerintah dan organisasi mid-size tertinggal dalam pertahanan informasi.
 
 **Solusi**: Platform open-source yang memadukan media monitoring, sentiment analysis berbahasa Indonesia, deteksi koordinasi, dan AI-generated mitigation strategy dalam satu sistem terintegrasi.
 
-# WASPADA: RSS Scraping and Research Pipeline
+# RSS Scraping and Research Pipeline
 
 "WASPADA" is an asynchronous RSS ingestion engine. The system is split into small modules (config, scraper, ML engine, database, and orchestrator) to make development, testing, and production deployment easier.
 This README now explains how the project works, how the pieces fit together, and how to get the engine running even if you are new to the codebase.
