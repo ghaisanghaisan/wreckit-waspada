@@ -1,83 +1,117 @@
 # WASPADA: RSS Scraping and Research Pipeline
 
-This project is a high-performance RSS scraping engine designed to collect and store news articles and social media posts for further analysis. The scraped data is stored in a PostgreSQL database and will be fed into an LLM (Large Language Model) for advanced research and insights (WIP).
+"WASPADA" is an asynchronous RSS ingestion engine. The system is split into small modules (config, scraper, ML engine, database, and orchestrator) to make development, testing, and production deployment easier.
 
-## Features
+This README explains how to set up, run, and test the project locally and in CI.
 
-- **RSS Scraping Engine**: Asynchronous scraping of RSS feeds using `aiohttp`, `feedparser`, and `asyncpg`.
-- **Database**: PostgreSQL 16 with extensions for semantic search (`pgvector`), UUID generation (`uuid-ossp`), and text search (`pg_trgm`).
-- **Data Models**:
-  - `news_articles`: Stores articles with metadata like `source`, `title`, `body`, `tags`, and timestamps.
-  - `social_posts`: Stores social media posts with engagement metrics and media URLs.
-- **Future Integration**: Data pipeline to feed scraped content into an LLM for research and analysis (WIP).
+**Recommended Python version**: 3.12 or 3.13 (PyTorch / Transformers are best supported on these versions). Python 3.14 may produce deprecation warnings from PyTorch.
 
-## Files
+## Project Layout
 
-- `docker-compose.yml`: Service for PostgreSQL 16 (pgvector image), mounts `database/init.sql` for initialization SQL and forces `timezone='UTC'`.
-- `database/init.sql`: Creates extensions, tables `news_articles` and `social_posts`, and the necessary indexes (B-Tree and GIN).
-- `rssengine/psycopg2_upsert.py`: Synchronous ingestion sample using `psycopg2` with `ON CONFLICT (url) DO UPDATE` for `news_articles`.
-- `rssengine/asyncpg_upsert.py`: Async ingestion sample using `asyncpg` for `social_posts` showing JSONB array usage.
-- `rssengine/rss_engine.py`: Async RSS ingestion engine (aiohttp + feedparser + asyncpg).
-- `requirements.txt`: Python dependencies for the async RSS engine.
+- `database/` — SQL initialization scripts (e.g. `init.sql`).
+- `rssengine/` — main python package:
+  - `config.py` — environment and app configuration.
+  - `scraper.py` — network fetch, feed parsing and keyword filter.
+  - `ml_engine.py` — HuggingFace pipeline singleton + batched inference.
+  - `database.py` — asyncpg pool, batch dedup query, and bulk insert.
+  - `main.py` — orchestrator (entrypoint).
+  - `rss_engine.py` — legacy single-file engine (kept for reference).
+- `scripts/reset_db.sh` — convenience script to drop all tables and re-run `database/init.sql`.
+- `tests/` — pytest suite (`tests/test_engine.py`).
+- `requirements.txt` — Python dependencies.
 
-## How to Run
+## Quickstart (local, recommended)
 
-1. **Start the Database**:
+1. Clone & enter project root
+
+```bash
+git clone <repo-url>
+cd wreckit-waspada
+```
+
+2. Create and activate a virtual environment (use Python 3.12/3.13)
+
+```bash
+# example with python3.12 (install python3.12 first or use pyenv)
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+```
+
+3. Install Python dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Start PostgreSQL (recommended: docker-compose provided)
 
 ```bash
 docker-compose up -d
+# wait until Postgres is healthy
 ```
 
-2. **Wait for the Database to be Healthy**:
-
-Ensure the database is ready before running scripts.
-
-3. **Run Example Scripts**:
+5. Initialize / Reset the DB (optional — destructive)
 
 ```bash
-export DATABASE_URL=postgresql://postgres:examplepassword@localhost:5432/waspada
-python3 rssengine/psycopg2_upsert.py
-python3 rssengine/asyncpg_upsert.py
+chmod +x scripts/reset_db.sh
+./scripts/reset_db.sh
 ```
 
-4. **Run the RSS Engine**:
-
-Install dependencies and start the engine:
+6. Run the engine
 
 ```bash
-python3 -m pip install -r requirements.txt
-export DATABASE_URL=postgresql://postgres:examplepassword@localhost:5432/waspada
-python3 rssengine/rss_engine.py
+# run continuously
+python -m rssengine
+
+# or run just once (useful for testing)
+RUN_ONCE=1 python -m rssengine
 ```
 
-Optional one-shot run:
+Notes:
+
+- The first run will load the HuggingFace model and may take some time and memory.
+
+## Running Tests
+
+1. Make sure the venv is activated and dependencies are installed (see above).
+
+2. Run pytest:
 
 ```bash
-RUN_ONCE=1 python3 rssengine/rss_engine.py
+pytest -q
+# or run specific tests
+pytest -q tests/test_engine.py
 ```
 
-## Notes / Best Practices
+The tests use lightweight mocks for the ML and DB layers and exercise keyword filtering, sentiment routing, and semaphore concurrency.
 
-- **Timezone**: All timestamp columns are `TIMESTAMPTZ`. In Python, always pass timezone-aware datetimes (`datetime.timezone.utc`). The container is configured to use UTC (`timezone='UTC'`).
-- **Upserts**: Use `ON CONFLICT (url) DO UPDATE` for `news_articles` ingestion to avoid duplicate scrapes.
-- **JSONB Operators**: When filtering by engagement metrics, use `->>` and cast to integer, e.g.:
+If pytest fails with import issues, ensure your current working directory is the project root and that `.venv` is activated. You can also set `PYTHONPATH`:
 
-```sql
-SELECT * FROM social_posts WHERE (engagement ->> 'likes')::int > 100;
+```bash
+export PYTHONPATH="$PWD"
 ```
 
-- **Array Operators**: When filtering by tags or media URLs use `= ANY()` or `&&`, e.g.:
+## Configuration & Environment
 
-```sql
-SELECT * FROM news_articles WHERE 'politics' = ANY(tags);
-SELECT * FROM social_posts WHERE media_urls && ARRAY['https://.../image.jpg'];
-```
+The app reads configuration from environment variables with sensible defaults. Key variables:
 
-- **Indexes**: GIN indexes are used for `tags` (array) and `engagement` (JSONB). B-Tree indexes are used for common filtering columns.
+- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB` — DB connection.
+- `RUN_ONCE` — set to `1` for a single-run ingestion (helpful for local tests).
+- `SENTIMENT_MODEL_NAME` — HF model name (default: `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli`).
+- `SENTIMENT_BATCH_SIZE`, `SENTIMENT_MAX_CONCURRENCY` — tune ML batching and concurrency.
 
-## Future Work
+You can set these inline when running, e.g.: `POSTGRES_PASSWORD=secret RUN_ONCE=1 python -m rssengine`.
 
-- **LLM Integration**: Develop a pipeline to feed scraped data into an LLM for advanced research and insights.
-- **Schema Validation**: Add a test harness to validate the database schema after container start.
-- **Production Settings**: Add a `Makefile` or `docker-compose` profile for production deployments.
-- **Batch Processing**: Implement a worker for batch upserts with retry/backoff logic.
+## Production Notes & Troubleshooting
+
+- PyTorch compatibility: PyTorch currently warns about `torch.jit.script` on Python 3.14. Use Python 3.12/3.13 for production to avoid deprecation warnings and runtime risk. The code suppresses the warning for development convenience but using a supported Python version is recommended.
+- Model memory: The HF zero-shot model is large. The engine uses a `BoundedSemaphore` and batching to avoid concurrent large inferences; tune `SENTIMENT_MAX_CONCURRENCY` and `SENTIMENT_BATCH_SIZE` according to available RAM/GPU.
+- Decoupling ML: For scale, move inference to a dedicated service (Phase 2) — e.g., an HTTP model server or a job queue (Celery/RabbitMQ) to isolate memory/latency.
+- DB schema: `database/init.sql` contains the `news_articles` table definition. Ensure the `sentiment` VARCHAR column exists before running the engine.
+
+## Development Tips
+
+- Use `RUN_ONCE=1` to test single-run behavior quickly.
+- Add or modify sources in `rssengine/config.py` via `load_config()` or by injecting a custom `AppConfig` when running programmatically.
+- Read logs to inspect per-source metrics: fetched / passed filter / analyzed sentiment counts.
