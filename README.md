@@ -1,117 +1,137 @@
+WASPADA adalah platform open-source pertama di Indonesia untuk pertahanan information warfare. Sistem ini melakukan monitoring terhadap media online Indonesia, mendeteksi narasi negatif yang terkoordinasi, menganalisis sentiment dengan AI berbahasa Indonesia, dan memberikan strategi mitigasi (debunking/prebunking) yang dihasilkan oleh LLM. Dirancang sebagai SaaS yang dapat diakses oleh kementerian, BUMN, partai politik, NGO, dan jurnalis investigasi.
+
+**Tagline**: _Mata yang Tak Pernah Tidur_
+
+**Problem statement**: Information warfare adalah ancaman nyata di Indonesia (pemilu disinformasi, hoax viral, foreign influence operations), namun tools enterprise seperti Meltwater dan Kazee sangat mahal dan tidak men-democratize akses. Lembaga non-pemerintah dan organisasi mid-size tertinggal dalam pertahanan informasi.
+
+**Solusi**: Platform open-source yang memadukan media monitoring, sentiment analysis berbahasa Indonesia, deteksi koordinasi, dan AI-generated mitigation strategy dalam satu sistem terintegrasi.
+
 # WASPADA: RSS Scraping and Research Pipeline
 
 "WASPADA" is an asynchronous RSS ingestion engine. The system is split into small modules (config, scraper, ML engine, database, and orchestrator) to make development, testing, and production deployment easier.
+This README now explains how the project works, how the pieces fit together, and how to get the engine running even if you are new to the codebase.
 
-This README explains how to set up, run, and test the project locally and in CI.
+**Recommended Python version**: 3.12 or 3.13 (these are best-supported by PyTorch and Transformers). Python 3.14 may show deprecation warnings from PyTorch.
 
-**Recommended Python version**: 3.12 or 3.13 (PyTorch / Transformers are best supported on these versions). Python 3.14 may produce deprecation warnings from PyTorch.
+**What this project does (plain language)**
 
-## Project Layout
+- Periodically fetches RSS/Atom feeds from configured sources.
+- Parses the feed entries and extracts article metadata and a short body.
+- Filters incoming items using simple keyword rules to avoid storing noise.
+- Performs a batched, zero-shot sentiment classification (optional) using a HuggingFace model.
+- Stores new articles into a PostgreSQL `news_articles` table, avoiding duplicates via dedup checks and upserts.
 
-- `database/` — SQL initialization scripts (e.g. `init.sql`).
-- `rssengine/` — main python package:
-  - `config.py` — environment and app configuration.
-  - `scraper.py` — network fetch, feed parsing and keyword filter.
-  - `ml_engine.py` — HuggingFace pipeline singleton + batched inference.
-  - `database.py` — asyncpg pool, batch dedup query, and bulk insert.
-  - `main.py` — orchestrator (entrypoint).
-  - `rss_engine.py` — legacy single-file engine (kept for reference).
-- `scripts/reset_db.sh` — convenience script to drop all tables and re-run `database/init.sql`.
-- `tests/` — pytest suite (`tests/test_engine.py`).
-- `requirements.txt` — Python dependencies.
+High-level flow (step-by-step)
 
-## Quickstart (local, recommended)
+1. The orchestrator (`rssengine/main.py`) schedules worker loops for each configured feed source.
+2. A worker fetches the feed XML (`aiohttp`) and parses it (`feedparser` running in a thread to avoid blocking the event loop).
+3. Parsed entries are normalized and run through `is_relevant()` keyword filters (cheap string matching).
+4. Candidate URLs are deduplicated using an in-memory URL cache and a single DB query (`SELECT url FROM news_articles WHERE url = ANY(...)`) before any ML work is performed.
+5. The remaining candidates are grouped into batches and sent to the `SentimentEngine` for zero-shot classification (run in `asyncio.to_thread` so inference is off the event loop) with concurrency limited by a `BoundedSemaphore`.
+6. Finalized rows (metadata, body, labels, sentiment) are bulk inserted/upserted into Postgres using `asyncpg`.
 
-1. Clone & enter project root
+Why this design? (short)
 
-```bash
+- Avoid waste: deduplicate before running heavy ML so CPU/memory isn't wasted on duplicates.
+- Scale-friendly: batching + semaphore preserve memory and allow tuning to available resources.
+- Async-first: network I/O (fetching feeds) is async for high throughput; heavy CPU work is run off-loop to avoid blocking.
+
+Project layout (what to open first)
+
+- `rssengine/config.py` — source list, global keywords, and environment defaults.
+- `rssengine/scraper.py` — how feeds are fetched and how candidate articles are built.
+- `rssengine/ml_engine.py` — model initialization, batching, and label routing.
+- `rssengine/database.py` — `asyncpg` pool creation, dedup query, and bulk upsert SQL.
+- `rssengine/main.py` — the orchestrator that wires everything together.
+
+Quickstart (friendly, copy-paste)
+
+1. Clone and enter the project
+
+```zsh
 git clone <repo-url>
 cd wreckit-waspada
 ```
 
-2. Create and activate a virtual environment (use Python 3.12/3.13)
+2. Create and activate a virtualenv (use Python 3.12/3.13)
 
-```bash
-# example with python3.12 (install python3.12 first or use pyenv)
+```zsh
+# example with python3.12
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 ```
 
-3. Install Python dependencies
+3. Install dependencies
 
-```bash
+```zsh
 pip install -r requirements.txt
 ```
 
-4. Start PostgreSQL (recommended: docker-compose provided)
+4. Start Postgres (recommended with docker-compose)
 
-```bash
+```zsh
 docker-compose up -d
-# wait until Postgres is healthy
+# wait until the DB reports healthy
 ```
 
-5. Initialize / Reset the DB (optional — destructive)
+5. (Optional) Initialize/reset DB
 
-```bash
+```zsh
 chmod +x scripts/reset_db.sh
 ./scripts/reset_db.sh
 ```
 
-6. Run the engine
+6. Run the engine (single-run or continuous)
 
-```bash
-# run continuously
-python -m rssengine
-
-# or run just once (useful for testing)
+```zsh
+# one-shot (good for testing):
 RUN_ONCE=1 python -m rssengine
+
+# continuous run:
+python -m rssengine
 ```
 
-Notes:
+Notes for first run
 
-- The first run will load the HuggingFace model and may take some time and memory.
+- The first time you run the engine it will download the zero-shot model and might take several minutes and tens of MBs (or more) of RAM. This is expected.
+- If you don't want sentiment inference, set `SENTIMENT_BATCH_SIZE=0` or modify `load_config()` to disable the ML step.
 
-## Running Tests
+Running tests
 
-1. Make sure the venv is activated and dependencies are installed (see above).
-
-2. Run pytest:
-
-```bash
+```zsh
+source .venv/bin/activate
 pytest -q
-# or run specific tests
-pytest -q tests/test_engine.py
 ```
 
-The tests use lightweight mocks for the ML and DB layers and exercise keyword filtering, sentiment routing, and semaphore concurrency.
+If tests fail because of imports, ensure your current directory is project root and `.venv` is activated. You can also run:
 
-If pytest fails with import issues, ensure your current working directory is the project root and that `.venv` is activated. You can also set `PYTHONPATH`:
-
-```bash
+```zsh
 export PYTHONPATH="$PWD"
+pytest -q
 ```
 
-## Configuration & Environment
+Configuration details
 
-The app reads configuration from environment variables with sensible defaults. Key variables:
+- The app reads env vars and falls back to defaults in `rssengine/config.py`.
+- Important env vars: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `RUN_ONCE`, `SENTIMENT_MODEL_NAME`, `SENTIMENT_BATCH_SIZE`, `SENTIMENT_MAX_CONCURRENCY`.
 
-- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB` — DB connection.
-- `RUN_ONCE` — set to `1` for a single-run ingestion (helpful for local tests).
-- `SENTIMENT_MODEL_NAME` — HF model name (default: `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli`).
-- `SENTIMENT_BATCH_SIZE`, `SENTIMENT_MAX_CONCURRENCY` — tune ML batching and concurrency.
+Troubleshooting quick list
 
-You can set these inline when running, e.g.: `POSTGRES_PASSWORD=secret RUN_ONCE=1 python -m rssengine`.
+- DB connection failures: confirm `docker-compose` started Postgres and `POSTGRES_*` envs match; use `psql` to test connectivity.
+- Model OOM or high memory: lower `SENTIMENT_MAX_CONCURRENCY` and `SENTIMENT_BATCH_SIZE`, or move model to a separate service.
+- Duplicate rows: ensure `database/init.sql` contains unique constraint on `url` and `news_articles.sentiment` column exists.
 
-## Production Notes & Troubleshooting
+Next steps I can help with
 
-- PyTorch compatibility: PyTorch currently warns about `torch.jit.script` on Python 3.14. Use Python 3.12/3.13 for production to avoid deprecation warnings and runtime risk. The code suppresses the warning for development convenience but using a supported Python version is recommended.
-- Model memory: The HF zero-shot model is large. The engine uses a `BoundedSemaphore` and batching to avoid concurrent large inferences; tune `SENTIMENT_MAX_CONCURRENCY` and `SENTIMENT_BATCH_SIZE` according to available RAM/GPU.
-- Decoupling ML: For scale, move inference to a dedicated service (Phase 2) — e.g., an HTTP model server or a job queue (Celery/RabbitMQ) to isolate memory/latency.
-- DB schema: `database/init.sql` contains the `news_articles` table definition. Ensure the `sentiment` VARCHAR column exists before running the engine.
+- Add a small Dockerfile and pinned Python runtime for the service.
+- Add a GitHub Actions workflow to run tests on PRs.
+- Add a minimal Prometheus metrics endpoint to monitor throughput and latency.
 
-## Development Tips
+If you want, I can now:
 
-- Use `RUN_ONCE=1` to test single-run behavior quickly.
-- Add or modify sources in `rssengine/config.py` via `load_config()` or by injecting a custom `AppConfig` when running programmatically.
-- Read logs to inspect per-source metrics: fetched / passed filter / analyzed sentiment counts.
+- run `pytest -q` and report results,
+- add a `Dockerfile` for the Python service,
+- or create a small `docker-compose` service for the Python worker.
+
+Tell me which next step you prefer and I'll proceed.
