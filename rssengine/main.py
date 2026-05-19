@@ -166,15 +166,20 @@ async def main() -> None:
     )
     config = load_config()
 
+    logger.warning("woiii connection=%s", config.db_dsn)
+
     sentiment_config = SentimentConfig(
         model_name=config.model_name,
         labels=config.sentiment_labels,
         min_confidence=config.sentiment_min_confidence,
         batch_size=config.sentiment_batch_size,
     )
+
     semaphore = asyncio.BoundedSemaphore(config.sentiment_max_concurrency)
     sentiment_engine = SentimentEngine(sentiment_config, semaphore)
     url_cache = UrlCache(config.url_cache_maxlen)
+
+
 
     pool = await create_pool(config.db_dsn, min_size=1, max_size=10)
     async with aiohttp.ClientSession() as session:

@@ -1,3 +1,5 @@
+# Enhanced .gitignore for Wreckit-Waspada
+
 # Python-related
 __pycache__/
 *.py[cod]
@@ -37,6 +39,7 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+.pytest_cache/**
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -67,3 +70,20 @@ rss_engine_debug.log
 # OS-generated files
 .DS_Store
 Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*.orig
+
+# Logs
+*.log
+logs/
+
+# Ignore frontend build artifacts
+frontend/build/
+frontend/dist/
+frontend/node_modules/

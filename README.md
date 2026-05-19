@@ -122,16 +122,9 @@ Troubleshooting quick list
 - Model OOM or high memory: lower `SENTIMENT_MAX_CONCURRENCY` and `SENTIMENT_BATCH_SIZE`, or move model to a separate service.
 - Duplicate rows: ensure `database/init.sql` contains unique constraint on `url` and `news_articles.sentiment` column exists.
 
-Next steps I can help with
+## TODOO!!
 
-- Add a small Dockerfile and pinned Python runtime for the service.
-- Add a GitHub Actions workflow to run tests on PRs.
-- Add a minimal Prometheus metrics endpoint to monitor throughput and latency.
-
-If you want, I can now:
-
-- run `pytest -q` and report results,
-- add a `Dockerfile` for the Python service,
-- or create a small `docker-compose` service for the Python worker.
-
-Tell me which next step you prefer and I'll proceed.
+- ~~containerize the rss engine~~
+- user friendly frontend
+- weekly reports
+- social media scraping
