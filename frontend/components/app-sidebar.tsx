@@ -14,6 +14,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { RowsIcon, WaveformIcon, CommandIcon, TerminalIcon, RobotIcon, BookOpenIcon, GearIcon, CropIcon, ChartPieIcon, MapTrifoldIcon } from "@phosphor-icons/react"
+import { HomeIcon } from "lucide-react"
 
 // This is sample data.
 const data = {
@@ -34,127 +35,52 @@ const data = {
   ],
   navMain: [
     {
-      title: "Playground",
-      url: "#",
+      title: "Home",
+      url: "/",
       icon: (
-        <TerminalIcon
+        <HomeIcon
         />
       ),
       isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
     },
     {
-      title: "Models",
-      url: "#",
+      title: "Monitor",
+      url: "/monitor/overview",
       icon: (
         <RobotIcon
         />
       ),
       items: [
         {
-          title: "Genesis",
-          url: "#",
+          title: "Overview",
+          url: "/monitor/overview",
         },
         {
-          title: "Explorer",
-          url: "#",
+          title: "Table View",
+          url: "/monitor/table",
         },
         {
-          title: "Quantum",
-          url: "#",
+          title: "Statistics",
+          url: "/monitor/statistics",
         },
       ],
     },
     {
-      title: "Documentation",
-      url: "#",
+      title: "Reports",
+      url: "/reports",
       icon: (
-        <BookOpenIcon
+        <RobotIcon
         />
       ),
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
     },
     {
       title: "Settings",
-      url: "#",
+      url: "/settings",
       icon: (
         <GearIcon
         />
       ),
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: (
-        <CropIcon
-        />
-      ),
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: (
-        <ChartPieIcon
-        />
-      ),
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: (
-        <MapTrifoldIcon
-        />
-      ),
+      
     },
   ],
 }
@@ -167,7 +93,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

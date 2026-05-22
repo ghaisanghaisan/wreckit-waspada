@@ -43,15 +43,14 @@ class SentimentEngine:
     def _map_label(self, label: str) -> str:
         if label == self._config.labels[0]:
             return "POSITIF"
-        if label == self._config.labels[1]:
+        else:
             return "NEGATIF"
-        return "NETRAL"
 
     def _route_result(self, result: dict) -> str:
         label = result["labels"][0]
         score = float(result["scores"][0])
-        if score < self._config.min_confidence:
-            return "NETRAL"
+        # if score < self._config.min_confidence:
+        #     return "NETRAL"
         return self._map_label(label)
 
     async def classify_batch(self, texts: Sequence[str]) -> List[str]:

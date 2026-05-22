@@ -78,11 +78,11 @@ SENTIMENT_NEGATIVE = (
     "keresahan warga, polemik berkepanjangan, kontroversi, rapor merah, skeptisisme, "
     "dugaan penyelewengan, kecurigaan publik, reaksi keras, blunder"
 )
-SENTIMENT_NEUTRAL = (
-    "pengumuman resmi, sosialisasi kebijakan, agenda kegiatan, informasi faktual, laporan rutin, "
-    "pernyataan prosedural, data statistik, regulasi pemerintah, kunjungan kerja, peresmian fasilitas, "
-    "pelantikan pejabat, tata kelola birokrasi, seremonial, jadwal pelaksanaan, rilis pers, liputan langsung"
-)
+# SENTIMENT_NEUTRAL = (
+#     "pengumuman resmi, sosialisasi kebijakan, agenda kegiatan, informasi faktual, laporan rutin, "
+#     "pernyataan prosedural, data statistik, regulasi pemerintah, kunjungan kerja, peresmian fasilitas, "
+#     "pelantikan pejabat, tata kelola birokrasi, seremonial, jadwal pelaksanaan, rilis pers, liputan langsung"
+# )
 
 
 def load_config() -> AppConfig:
@@ -114,9 +114,19 @@ def load_config() -> AppConfig:
             url="https://www.cnbcindonesia.com/news/rss",
             interval_seconds=10,
         ),
+        RSSSourceConfig(
+            source="detik.com",
+            url="https://news.detik.com/berita/rss",
+            interval_seconds=10,
+        ),
+        RSSSourceConfig(
+            source="tirto.id",
+            url="https://tirto.id/sitemap/r/google-discover",
+            interval_seconds=10,
+        ),
     ]
 
-    sentiment_labels = [SENTIMENT_POSITIVE, SENTIMENT_NEGATIVE, SENTIMENT_NEUTRAL]
+    sentiment_labels = [SENTIMENT_POSITIVE, SENTIMENT_NEGATIVE ]
 
     return AppConfig(
         db_dsn=db_dsn,
