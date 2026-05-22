@@ -25,7 +25,7 @@ const data = {
   },
   instansi: [
     {
-      name: "Kementerian Pertahanan",
+      name: "KEMHAN",
       logo: (
         <RowsIcon
         />

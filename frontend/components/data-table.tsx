@@ -40,7 +40,7 @@ export function DataTable({ data }: DataTableProps) {
             <TableCell title={String(row.published_at)}>
               {formatDate(row.published_at as any)}
             </TableCell>
-            <TableCell>{row.sentiment ?? "-"}</TableCell>
+            <TableCell className={row.sentiment == "POSITIF" ? "text-green-500" : "text-red-500"}>{row.sentiment ?? "-"}</TableCell>
           </TableRow>
         ))}
       </TableBody>
