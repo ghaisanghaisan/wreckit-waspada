@@ -18,6 +18,23 @@ services:
     networks:
       - waspada-net
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ./Dockerfile
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: database
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - waspada-net
+
   waspada-engine:
     build:
       context: .
