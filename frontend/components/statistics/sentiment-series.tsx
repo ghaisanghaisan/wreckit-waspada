@@ -13,7 +13,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import type { SentimentDataPoint } from "@/app/monitor/statistics/page"
+import type { SentimentDataPoint } from "@/app/dashboard/monitor/statistics/page"
 
 type SentimentSeriesProps = {
   data: SentimentDataPoint[]

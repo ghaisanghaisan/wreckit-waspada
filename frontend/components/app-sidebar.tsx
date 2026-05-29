@@ -36,7 +36,7 @@ const data = {
   navMain: [
     {
       title: "Home",
-      url: "/",
+      url: "/dashboard",
       icon: (
         <HomeIcon
         />
@@ -45,7 +45,7 @@ const data = {
     },
     {
       title: "Monitor",
-      url: "/monitor/overview",
+      url: "/dashboard/monitor/overview",
       icon: (
         <RobotIcon
         />
@@ -53,21 +53,21 @@ const data = {
       items: [
         {
           title: "Overview",
-          url: "/monitor/overview",
+          url: "/dashboard/monitor/overview",
         },
         {
           title: "Table View",
-          url: "/monitor/table",
+          url: "/dashboard/monitor/table",
         },
         {
           title: "Statistics",
-          url: "/monitor/statistics",
+          url: "/dashboard/monitor/statistics",
         },
       ],
     },
     {
       title: "Reports",
-      url: "/reports",
+      url: "/dashboard/reports",
       icon: (
         <RobotIcon
         />
@@ -75,7 +75,7 @@ const data = {
     },
     {
       title: "Settings",
-      url: "/settings",
+      url: "/dashboard/settings",
       icon: (
         <GearIcon
         />

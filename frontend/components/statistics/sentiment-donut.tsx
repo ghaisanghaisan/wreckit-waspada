@@ -7,7 +7,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import type { SentimentTotals } from "@/app/monitor/statistics/page"
+import type { SentimentTotals } from "@/app/dashboard/monitor/statistics/page"
 
 type SentimentDonutProps = {
   totals: SentimentTotals

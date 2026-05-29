@@ -173,6 +173,8 @@ async def main() -> None:
         labels=config.sentiment_labels,
         min_confidence=config.sentiment_min_confidence,
         batch_size=config.sentiment_batch_size,
+        contexts=config.sentiment_contexts,
+        max_length=config.sentiment_max_length,
     )
 
     semaphore = asyncio.BoundedSemaphore(config.sentiment_max_concurrency)

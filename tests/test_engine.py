@@ -33,10 +33,12 @@ async def test_ml_routing_with_confidence_threshold() -> None:
         labels=["POS", "NEG", "NEU"],
         min_confidence=0.4,
         batch_size=3,
+        contexts=[],
+        max_length=256,
     )
     engine = SentimentEngine(config, asyncio.BoundedSemaphore(2), infer_fn=fake_infer)
     results = await engine.classify_batch(["a", "b", "c"])
-    assert results == ["POSITIF", "NEGATIF", "NETRAL"]
+    assert results == ["POSITIF", "NEGATIF", "POSITIF"]
 
 
 @pytest.mark.asyncio
@@ -60,6 +62,8 @@ async def test_semaphore_limits_concurrency() -> None:
         labels=["POS", "NEG", "NEU"],
         min_confidence=0.4,
         batch_size=1,
+        contexts=[],
+        max_length=256,
     )
     engine = SentimentEngine(config, asyncio.BoundedSemaphore(2), infer_fn=fake_infer)
 

@@ -36,9 +36,13 @@ export default function RootLayout({
       className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, jetbrainsMono.variable , "font-sans", outfit.variable)}
     >
       <body className="dark">
+      <SidebarProvider>
+      <AppSidebar />
       <main>
+        <SidebarTrigger />
         {children}
       </main>
+    </SidebarProvider>
     </body>
     </html>
   );

@@ -25,9 +25,11 @@ class AppConfig:
     user_agent: str
     model_name: str
     sentiment_labels: List[str]
+    sentiment_contexts: List[str]
     sentiment_min_confidence: float
     sentiment_max_concurrency: int
     sentiment_batch_size: int
+    sentiment_max_length: int
     url_cache_maxlen: int
 
 
@@ -66,23 +68,13 @@ GLOBAL_KEYWORDS: List[str] = [
     "SIM Keliling",
 ]
 
-SENTIMENT_POSITIVE = (
-    "apresiasi masyarakat, dukungan publik, kepuasan warga, pujian, kepercayaan publik, "
-    "respons positif, pelayanan memuaskan, citra baik, pro-rakyat, antusiasme, kebanggaan, "
-    "simpati masyarakat, sambutan hangat, harapan baru, kinerja gemilang, inovasi bermanfaat, "
-    "keberpihakan pada rakyat, solusi tepat sasaran, dukungan netizen"
-)
-SENTIMENT_NEGATIVE = (
-    "kekecewaan publik, kritik tajam, penolakan warga, protes masyarakat, kecaman, krisis kepercayaan, "
-    "kinerja buruk, ketidakpuasan, tuntutan, desakan mundur, viral negatif, kemarahan netizen, "
-    "keresahan warga, polemik berkepanjangan, kontroversi, rapor merah, skeptisisme, "
-    "dugaan penyelewengan, kecurigaan publik, reaksi keras, blunder"
-)
-# SENTIMENT_NEUTRAL = (
-#     "pengumuman resmi, sosialisasi kebijakan, agenda kegiatan, informasi faktual, laporan rutin, "
-#     "pernyataan prosedural, data statistik, regulasi pemerintah, kunjungan kerja, peresmian fasilitas, "
-#     "pelantikan pejabat, tata kelola birokrasi, seremonial, jadwal pelaksanaan, rilis pers, liputan langsung"
-# )
+DEFAULT_SENTIMENT_LABELS = ["POSITIF", "NEGATIF"]
+DEFAULT_SENTIMENT_CONTEXTS = [
+    "performa polisi",
+    "opini publik terhadap polisi",
+    "prestasi polisi",
+    "keberhasilan polisi",
+]
 
 
 def load_config() -> AppConfig:
@@ -126,7 +118,9 @@ def load_config() -> AppConfig:
         ),
     ]
 
-    sentiment_labels = [SENTIMENT_POSITIVE, SENTIMENT_NEGATIVE ]
+    sentiment_contexts = DEFAULT_SENTIMENT_CONTEXTS
+
+    sentiment_labels = DEFAULT_SENTIMENT_LABELS
 
     return AppConfig(
         db_dsn=db_dsn,
@@ -139,11 +133,13 @@ def load_config() -> AppConfig:
         user_agent=os.getenv("USER_AGENT", "waspada-rss-bot/1.0"),
         model_name=os.getenv(
             "SENTIMENT_MODEL_NAME",
-            "MoritzLaurer/mDeBERTa-v3-base-mnli-xnli",
+            "apriandito/indobert-binary-sentiment-classifier",
         ),
         sentiment_labels=sentiment_labels,
+        sentiment_contexts=sentiment_contexts,
         sentiment_min_confidence=float(os.getenv("SENTIMENT_MIN_CONFIDENCE", "0.4")),
         sentiment_max_concurrency=int(os.getenv("SENTIMENT_MAX_CONCURRENCY", "2")),
         sentiment_batch_size=int(os.getenv("SENTIMENT_BATCH_SIZE", "16")),
+        sentiment_max_length=int(os.getenv("SENTIMENT_MAX_LENGTH", "256")),
         url_cache_maxlen=int(os.getenv("URL_CACHE_MAXLEN", "500")),
     )
