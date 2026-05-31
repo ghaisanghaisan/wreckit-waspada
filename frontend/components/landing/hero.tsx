@@ -1,4 +1,6 @@
 import Link from "next/link"
+import Image from "next/image"
+import { CyberEye } from "./cyber-eye"
 
 import { Button } from "@/components/ui/button"
 
@@ -9,14 +11,13 @@ export function HeroSection() {
         <div className="flex-1 space-y-6">
           {/* TODO: Replace headline and subheadline copy */}
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
-            Waspada Platform
+            "The Eye that Never Sleeps"
           </p>
           <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-            Real-time intelligence for high-stakes public sentiment.
+Autonomous Cyber Intelligence and AI-Driven Threat Detection
           </h1>
           <p className="max-w-xl text-base text-muted-foreground sm:text-lg">
-            Streamline monitoring, classify sentiment instantly, and keep your teams informed with a
-            workflow built for crisis-response clarity.
+Monitor the digital landscape with autonomous AI capable of identifying sentiment shifts, coordinated messaging, and information operations at scale.
           </p>
 
           <div className="flex flex-wrap gap-3">
@@ -30,12 +31,18 @@ export function HeroSection() {
           </div>
         </div>
 
-        <div className="flex-1">
-          {/* TODO: Replace with Image or product screenshot */}
-          <div className="relative h-[320px] w-full overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/10 via-background to-background shadow-sm sm:h-[380px]">
-            <div className="absolute inset-6 rounded-xl border bg-background/60 shadow-sm" />
-            <div className="absolute left-10 top-10 h-16 w-40 rounded-full bg-primary/10" />
-            <div className="absolute bottom-10 right-10 h-20 w-20 rounded-2xl bg-primary/15" />
+        <div className="flex-1 ">
+
+          <div className="relative flex justify-center items-center h-80 w-full overflow-hidden rounded-2xl shadow-sm sm:h-95">
+            {/* <Image
+              src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExcmYxM2luMXlxdXFqeTRsYWJqcWp1cGlmY3A4Y3c4cTJwZTZqMG1tcSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3ohs4CacylzFaHjMM8/giphy.gif"
+              alt="Product demo GIF - replace this alt with descriptive text" // <-- update alt
+              fill
+              className="object-cover rounded-xl"
+              unoptimized // keeps original GIF; remove if you added domain in next.config.js and want optimization
+              priority={false}
+            /> */}
+            <CyberEye/>
           </div>
         </div>
       </div>

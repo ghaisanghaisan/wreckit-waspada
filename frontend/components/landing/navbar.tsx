@@ -23,12 +23,12 @@ export function LandingNavbar() {
         <Link href="#" className="flex items-center gap-2">
           <Image
             src="/logo_waspada.png"
-            alt="Replace with your brand logo"
+            alt="WASPADA LOGO"
             width={32}
             height={32}
             className="rounded"
           />
-          <span className="text-base font-semibold">Waspada</span>
+          <span className="text-base font-extrabold">WASPADA</span>
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
@@ -46,6 +46,9 @@ export function LandingNavbar() {
         <div className="flex items-center gap-3">
           {/* TODO: Replace CTA text and link destination */}
           <Button className="hidden md:inline-flex">Get Started</Button>
+          <Button variant="outline" className="hidden md:inline-flex">
+            <Link href="/login">Login</Link>
+          </Button>
 
           <Sheet>
             <SheetTrigger className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground md:hidden">
@@ -54,7 +57,6 @@ export function LandingNavbar() {
             </SheetTrigger>
             <SheetContent side="right" className="w-72">
               <div className="flex h-full flex-col gap-6 pt-6">
-                {/* TODO: Replace logo source, alt text, and brand name */}
                 <div className="flex items-center gap-2">
                   <Image
                     src="/placeholder-logo.svg"
@@ -76,8 +78,7 @@ export function LandingNavbar() {
                     </Link>
                   ))}
                 </div>
-                {/* TODO: Replace CTA text and link destination */}
-                <Button className="w-full">Get Started</Button>
+                <Button variant="outline" className="w-full">Login</Button>
               </div>
             </SheetContent>
           </Sheet>
