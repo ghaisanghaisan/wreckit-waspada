@@ -9,10 +9,18 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
+-- organizations table
+CREATE TABLE IF NOT EXISTS organizations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- news_articles table
 CREATE TABLE IF NOT EXISTS news_articles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  url TEXT UNIQUE NOT NULL,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  url TEXT NOT NULL,
   source VARCHAR(100),
   title TEXT NOT NULL,
   body TEXT NOT NULL,
@@ -21,9 +29,22 @@ CREATE TABLE IF NOT EXISTS news_articles (
   scraped_at TIMESTAMPTZ DEFAULT now(),
   category VARCHAR(100),
   sentiment varchar(10),
+  processed_sentiment JSONB NOT NULL DEFAULT '{}'::jsonb,
   tags TEXT[] DEFAULT ARRAY[]::text[],
   raw_html TEXT
 );
+
+-- tenant_configs table
+CREATE TABLE IF NOT EXISTS tenant_configs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  keywords TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
+  sentiment_contexts TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tenant_configs_org ON tenant_configs (organization_id);
 
 -- social_posts table
 CREATE TABLE IF NOT EXISTS social_posts (
@@ -40,6 +61,7 @@ CREATE TABLE IF NOT EXISTS social_posts (
 );
 
 -- B-Tree indexes
+CREATE UNIQUE INDEX IF NOT EXISTS idx_news_articles_org_url ON news_articles (organization_id, url);
 CREATE INDEX IF NOT EXISTS idx_news_articles_source ON news_articles (source);
 CREATE INDEX IF NOT EXISTS idx_news_articles_published_at ON news_articles (published_at);
 CREATE INDEX IF NOT EXISTS idx_social_posts_platform ON social_posts (platform);

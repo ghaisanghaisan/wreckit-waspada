@@ -24,9 +24,6 @@ class AppConfig:
     fetch_backoff_base: float
     user_agent: str
     model_name: str
-    sentiment_labels: List[str]
-    sentiment_contexts: List[str]
-    sentiment_min_confidence: float
     sentiment_max_concurrency: int
     sentiment_batch_size: int
     sentiment_max_length: int
@@ -67,15 +64,6 @@ GLOBAL_KEYWORDS: List[str] = [
     "Samsat",
     "SIM Keliling",
 ]
-
-DEFAULT_SENTIMENT_LABELS = ["POSITIF", "NEGATIF"]
-DEFAULT_SENTIMENT_CONTEXTS = [
-    "performa polisi",
-    "opini publik terhadap polisi",
-    "prestasi polisi",
-    "keberhasilan polisi",
-]
-
 
 def load_config() -> AppConfig:
     db_user = os.getenv("POSTGRES_USER", "postgres")
@@ -118,10 +106,6 @@ def load_config() -> AppConfig:
         ),
     ]
 
-    sentiment_contexts = DEFAULT_SENTIMENT_CONTEXTS
-
-    sentiment_labels = DEFAULT_SENTIMENT_LABELS
-
     return AppConfig(
         db_dsn=db_dsn,
         sources=sources,
@@ -135,9 +119,6 @@ def load_config() -> AppConfig:
             "SENTIMENT_MODEL_NAME",
             "apriandito/indobert-binary-sentiment-classifier",
         ),
-        sentiment_labels=sentiment_labels,
-        sentiment_contexts=sentiment_contexts,
-        sentiment_min_confidence=float(os.getenv("SENTIMENT_MIN_CONFIDENCE", "0.4")),
         sentiment_max_concurrency=int(os.getenv("SENTIMENT_MAX_CONCURRENCY", "2")),
         sentiment_batch_size=int(os.getenv("SENTIMENT_BATCH_SIZE", "16")),
         sentiment_max_length=int(os.getenv("SENTIMENT_MAX_LENGTH", "256")),

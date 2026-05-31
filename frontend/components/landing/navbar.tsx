@@ -22,7 +22,7 @@ export function LandingNavbar() {
         {/* TODO: Replace logo source, alt text, and brand name */}
         <Link href="#" className="flex items-center gap-2">
           <Image
-            src="/placeholder-logo.svg"
+            src="/logo_waspada.png"
             alt="Replace with your brand logo"
             width={32}
             height={32}

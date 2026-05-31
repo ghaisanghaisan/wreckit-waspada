@@ -1,18 +1,29 @@
 from __future__ import annotations
 
-import asyncio
 import logging
+import os
+
+import transformers
+
+# Set standard Python logging to DEBUG globally
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+
+
+# Explicitly enable tqdm progress bars for downloads
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "0"
+
+import asyncio
 import random
 import uuid
 from collections import deque
-from typing import Iterable, List, Sequence
+from typing import Iterable, List, Sequence, Tuple
 
 import aiohttp
 
 from .config import AppConfig, RSSSourceConfig, load_config
-from .database import create_pool, fetch_existing_urls, insert_rows
-from .ml_engine import SentimentConfig, SentimentEngine
-from .scraper import Candidate, collect_candidates, fetch_xml, parse_feed
+from .database import TenantConfig, create_pool, fetch_existing_urls, fetch_tenant_configs, insert_rows
+from .ml_engine import SentimentConfig, SentimentEngine, summarize_sentiment
+from .scraper import Candidate, collect_candidates, fetch_xml, is_relevant, normalize_keywords, parse_feed
 
 
 logger = logging.getLogger("waspada.rss_engine")
@@ -21,28 +32,33 @@ logger = logging.getLogger("waspada.rss_engine")
 class UrlCache:
     def __init__(self, maxlen: int) -> None:
         self._deque = deque(maxlen=maxlen)
-        self._set: set[str] = set()
+        self._set: set[Tuple[str, str]] = set()
         self._lock = asyncio.Lock()
 
-    async def filter_new(self, urls: Sequence[str]) -> List[str]:
-        if not urls:
+    async def filter_new(self, keys: Sequence[Tuple[str, str]]) -> List[Tuple[str, str]]:
+        if not keys:
             return []
         async with self._lock:
-            return [url for url in urls if url not in self._set]
+            return [key for key in keys if key not in self._set]
 
-    async def update(self, urls: Iterable[str]) -> None:
+    async def update(self, keys: Iterable[Tuple[str, str]]) -> None:
         async with self._lock:
-            for url in urls:
-                if url in self._set:
+            for key in keys:
+                if key in self._set:
                     continue
                 if len(self._deque) == self._deque.maxlen:
                     evicted = self._deque.popleft()
                     self._set.discard(evicted)
-                self._deque.append(url)
-                self._set.add(url)
+                self._deque.append(key)
+                self._set.add(key)
 
 
-def build_rows(source: str, candidates: Sequence[Candidate], sentiments: Sequence[str]) -> List[tuple]:
+def build_rows(
+    source: str,
+    organization_id: str,
+    candidates: Sequence[Candidate],
+    sentiments: Sequence[dict],
+) -> List[tuple]:
     from datetime import datetime, timezone
 
     scraped_at = datetime.now(timezone.utc)
@@ -51,10 +67,12 @@ def build_rows(source: str, candidates: Sequence[Candidate], sentiments: Sequenc
         rows.append(
             (
                 uuid.uuid4(),
+                organization_id,
                 candidate.url,
                 source,
                 candidate.title,
                 candidate.body,
+                summarize_sentiment(sentiment),
                 sentiment,
                 candidate.published_at,
                 scraped_at,
@@ -71,7 +89,6 @@ async def worker(
     sentiment_engine: SentimentEngine,
     url_cache: UrlCache,
 ) -> None:
-    keywords = source_config.keywords or config.global_keywords
     interval = int(source_config.interval_seconds)
     task = asyncio.current_task()
     task_name = getattr(task, "get_name", lambda: None)()
@@ -92,59 +109,31 @@ async def worker(
             feed = await parse_feed(raw_xml)
             fetched = len(feed.entries)
 
-            # 1) Parse + cheap keyword filter (O(N) string checks).
-            candidates = collect_candidates(feed, keywords)
-            candidate_urls = [candidate.url for candidate in candidates]
+            tenants = await fetch_tenant_configs(pool)
+            if not tenants:
+                logger.info("worker.empty source=%s fetched=%d tenants=0", source_config.source, fetched)
+                if config.run_once:
+                    break
+                await _sleep_with_jitter(interval)
+                continue
 
-            # 2) Cache filter to avoid frequent DB hits on hot loops.
-            filtered_urls = await url_cache.filter_new(candidate_urls)
-            filtered_set = set(filtered_urls)
-            candidates = [candidate for candidate in candidates if candidate.url in filtered_set]
+            candidates = collect_candidates(feed, [])
             if not candidates:
                 logger.info("worker.empty source=%s fetched=%d passed=0", source_config.source, fetched)
                 if config.run_once:
-                    logger.info("worker.exit_once source=%s", source_config.source)
                     break
                 await _sleep_with_jitter(interval)
                 continue
 
-            # 3) DB dedup BEFORE ML to avoid O(N) CPU waste on already-seen URLs.
-            existing = await fetch_existing_urls(pool, [candidate.url for candidate in candidates])
-            new_candidates = [candidate for candidate in candidates if candidate.url not in existing]
-            if not new_candidates:
-                logger.info("worker.empty source=%s fetched=%d passed=0", source_config.source, fetched)
-                if config.run_once:
-                    logger.info("worker.exit_once source=%s", source_config.source)
-                    break
-                await _sleep_with_jitter(interval)
-                continue
-
-            # 4) Batched ML inference (semaphore-limited) to minimize overhead.
-            texts = [f"{candidate.title} {candidate.body}".strip() or " " for candidate in new_candidates]
-            sentiments = await sentiment_engine.classify_batch(texts)
-            rows = build_rows(source_config.source, new_candidates, sentiments)
-
-            positives = sum(1 for sentiment in sentiments if sentiment == "POSITIF")
-            negatives = sum(1 for sentiment in sentiments if sentiment == "NEGATIF")
-            neutrals = len(sentiments) - positives - negatives
-            logger.info(
-                "sentiment.analyzed source=%s total=%d positif=%d negatif=%d netral=%d",
-                source_config.source,
-                len(sentiments),
-                positives,
-                negatives,
-                neutrals,
-            )
-
-            await insert_rows(pool, rows)
-            await url_cache.update([candidate.url for candidate in new_candidates])
-            logger.info(
-                "worker.inserted source=%s fetched=%d passed=%d inserted=%d",
-                source_config.source,
-                fetched,
-                len(new_candidates),
-                len(rows),
-            )
+            for tenant in tenants:
+                await _process_tenant_candidates(
+                    pool=pool,
+                    source=source_config.source,
+                    tenant=tenant,
+                    candidates=candidates,
+                    sentiment_engine=sentiment_engine,
+                    url_cache=url_cache,
+                )
         except Exception as exc:
             logger.exception("worker.error source=%s url=%s error=%s", source_config.source, source_config.url, exc)
 
@@ -166,14 +155,11 @@ async def main() -> None:
     )
     config = load_config()
 
-    logger.warning("woiii connection=%s", config.db_dsn)
+    logger.info("LOADING SENTIMENT MODEL")
 
     sentiment_config = SentimentConfig(
         model_name=config.model_name,
-        labels=config.sentiment_labels,
-        min_confidence=config.sentiment_min_confidence,
         batch_size=config.sentiment_batch_size,
-        contexts=config.sentiment_contexts,
         max_length=config.sentiment_max_length,
     )
 
@@ -182,6 +168,7 @@ async def main() -> None:
     url_cache = UrlCache(config.url_cache_maxlen)
 
 
+    logger.info("CREATING POOL")
 
     pool = await create_pool(config.db_dsn, min_size=1, max_size=10)
     async with aiohttp.ClientSession() as session:
@@ -198,6 +185,51 @@ async def main() -> None:
 
     # Phase 2: move inference to a queue/microservice (e.g., Celery/RabbitMQ) to isolate ML latency.
 
+
+
+async def _process_tenant_candidates(
+    pool,
+    source: str,
+    tenant: TenantConfig,
+    candidates: Sequence[Candidate],
+    sentiment_engine: SentimentEngine,
+    url_cache: UrlCache,
+) -> None:
+    normalized_keywords = normalize_keywords(list(tenant.keywords))
+    tenant_candidates = [
+        candidate
+        for candidate in candidates
+        if is_relevant(candidate.title, candidate.body, normalized_keywords)
+    ]
+    if not tenant_candidates:
+        return
+
+    cache_keys = [(tenant.organization_id, candidate.url) for candidate in tenant_candidates]
+    filtered_keys = await url_cache.filter_new(cache_keys)
+    filtered_set = set(filtered_keys)
+    tenant_candidates = [
+        candidate
+        for candidate in tenant_candidates
+        if (tenant.organization_id, candidate.url) in filtered_set
+    ]
+    if not tenant_candidates:
+        return
+
+    existing = await fetch_existing_urls(
+        pool,
+        tenant.organization_id,
+        [candidate.url for candidate in tenant_candidates],
+    )
+    new_candidates = [candidate for candidate in tenant_candidates if candidate.url not in existing]
+    if not new_candidates:
+        return
+
+    texts = [f"{candidate.title} {candidate.body}".strip() or " " for candidate in new_candidates]
+    sentiments = await sentiment_engine.classify_contexts(texts, tenant.sentiment_contexts)
+    rows = build_rows(source, tenant.organization_id, new_candidates, sentiments)
+
+    await insert_rows(pool, rows)
+    await url_cache.update([(tenant.organization_id, candidate.url) for candidate in new_candidates])
 
 if __name__ == "__main__":
     try:

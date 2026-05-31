@@ -20,25 +20,18 @@ def test_is_relevant_case_insensitive() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ml_routing_with_confidence_threshold() -> None:
-    def fake_infer(texts: Sequence[str], labels: Sequence[str]):
-        return [
-            {"labels": [labels[0], labels[1], labels[2]], "scores": [0.9, 0.05, 0.05]},
-            {"labels": [labels[1], labels[0], labels[2]], "scores": [0.8, 0.1, 0.1]},
-            {"labels": [labels[0], labels[1], labels[2]], "scores": [0.2, 0.1, 0.7]},
-        ]
+async def test_ml_context_batching() -> None:
+    def fake_infer(texts: Sequence[str], contexts: Sequence[str]):
+        return [{context: {"label": "POSITIF", "score": 0.9} for context in contexts} for _ in texts]
 
     config = SentimentConfig(
         model_name="dummy",
-        labels=["POS", "NEG", "NEU"],
-        min_confidence=0.4,
         batch_size=3,
-        contexts=[],
         max_length=256,
     )
     engine = SentimentEngine(config, asyncio.BoundedSemaphore(2), infer_fn=fake_infer)
-    results = await engine.classify_batch(["a", "b", "c"])
-    assert results == ["POSITIF", "NEGATIF", "POSITIF"]
+    results = await engine.classify_contexts(["a", "b", "c"], ["ctx-1", "ctx-2"])
+    assert results[0]["ctx-1"]["label"] == "POSITIF"
 
 
 @pytest.mark.asyncio
@@ -47,7 +40,7 @@ async def test_semaphore_limits_concurrency() -> None:
     current = 0
     max_seen = 0
 
-    def fake_infer(texts: Sequence[str], labels: Sequence[str]):
+    def fake_infer(texts: Sequence[str], contexts: Sequence[str]):
         nonlocal current, max_seen
         with lock:
             current += 1
@@ -55,19 +48,16 @@ async def test_semaphore_limits_concurrency() -> None:
         time.sleep(0.05)
         with lock:
             current -= 1
-        return [{"labels": [labels[0]], "scores": [0.9]} for _ in texts]
+        return [{"overall": {"label": "POSITIF", "score": 0.9}} for _ in texts]
 
     config = SentimentConfig(
         model_name="dummy",
-        labels=["POS", "NEG", "NEU"],
-        min_confidence=0.4,
         batch_size=1,
-        contexts=[],
         max_length=256,
     )
     engine = SentimentEngine(config, asyncio.BoundedSemaphore(2), infer_fn=fake_infer)
 
-    await asyncio.gather(*[engine.classify_batch(["x"]) for _ in range(10)])
+    await asyncio.gather(*[engine.classify_contexts(["x"], ["overall"]) for _ in range(10)])
     assert max_seen <= 2
 
 
@@ -83,9 +73,9 @@ async def test_db_dedup_filters_existing_urls() -> None:
         async def __aexit__(self, exc_type, exc, tb):
             return False
 
-        async def fetch(self, query: str, urls: Sequence[str]):
+        async def fetch(self, query: str, organization_id: str, urls: Sequence[str]):
             return [{"url": "b"}]
 
     pool = FakePool()
-    existing = await fetch_existing_urls(pool, ["a", "b", "c"])
+    existing = await fetch_existing_urls(pool, "org-1", ["a", "b", "c"])
     assert existing == {"b"}
