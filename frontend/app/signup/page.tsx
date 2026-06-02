@@ -1,18 +1,22 @@
 "use client"
 
 import { SignupForm } from "@/components/signup-form"
-import { GalleryVerticalEndIcon } from "lucide-react"
+import Image from "next/image"
 
 export default function SignupPage() {
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">
         <div className="flex justify-center gap-2 md:justify-start">
-          <a href="#" className="flex items-center gap-2 font-medium">
-            <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <GalleryVerticalEndIcon className="size-4" />
-            </div>
-            Acme Inc.
+          <a href="/" className="flex items-center gap-2 font-extrabold">
+            <Image
+              src="/logo_waspada.png"
+              alt="Waspada logo"
+              width={36}
+              height={36}
+              className="object-contain"
+            />
+            WASPADA
           </a>
         </div>
         <div className="flex flex-1 items-center justify-center">

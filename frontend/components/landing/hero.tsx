@@ -13,7 +13,7 @@ export function HeroSection() {
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
             "The Eye that Never Sleeps"
           </p>
-          <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+          <h1 className="animate-in fade-in-0 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
 Autonomous Cyber Intelligence and AI-Driven Threat Detection
           </h1>
           <p className="max-w-xl text-base text-muted-foreground sm:text-lg">
@@ -23,7 +23,7 @@ Monitor the digital landscape with autonomous AI capable of identifying sentimen
           <div className="flex flex-wrap gap-3">
             {/* TODO: Replace CTA labels and destinations */}
             <Button size="lg">
-              <Link href="#pricing">Get Started</Link>
+              <Link href="/signup">Get Started</Link>
             </Button>
             <Button size="lg" variant="outline">
               <Link href="#about">Learn More</Link>

@@ -1,23 +1,41 @@
+import { AppSidebar } from "@/components/app-sidebar"
+import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { DataTable } from "@/components/data-table"
+import { SectionCards } from "@/components/section-cards"
+import { SiteHeader } from "@/components/site-header"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+
 import { fetchNewsArticles } from "@/lib/news-articles"
 
 export const dynamic = "force-dynamic"
-export const revalidate = 0
 
-export default async function Home() {
+export default async function Page() {
   const data = await fetchNewsArticles()
 
   return (
-    <main className="min-h-screen p-6">
-      <section className="mx-auto w-full max-w-6xl space-y-4">
-        <div>
-          <h1 className="text-xl font-semibold">Waspada Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Latest ingested articles
-          </p>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }
+    >
+      <AppSidebar variant="sidebar" />
+      <SidebarInset>
+        <SiteHeader />
+        <div className="flex flex-1 flex-col">
+          <div className="@container/main flex flex-1 flex-col gap-2">
+            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+              <SectionCards />
+              <div className="px-4 lg:px-6">
+                <ChartAreaInteractive />
+              </div>
+              <DataTable data={data} />
+            </div>
+          </div>
         </div>
-        <DataTable data={data} />
-      </section>
-    </main>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

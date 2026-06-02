@@ -23,11 +23,12 @@ export function SignupForm({
           </p>
         </div>
         <Field>
-          <FieldLabel htmlFor="name">Full Name</FieldLabel>
+          <FieldLabel htmlFor="organization">Organization's Name</FieldLabel>
+
           <Input
             id="name"
             type="text"
-            placeholder="John Doe"
+            placeholder="Kementerian Pertahanan"
             required
             className="bg-background"
           />

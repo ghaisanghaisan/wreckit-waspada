@@ -2,102 +2,210 @@
 
 import * as React from "react"
 
+import Image from "next/image"
+import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
+import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarRail,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { RowsIcon, WaveformIcon, CommandIcon, TerminalIcon, RobotIcon, BookOpenIcon, GearIcon, CropIcon, ChartPieIcon, MapTrifoldIcon } from "@phosphor-icons/react"
-import { HomeIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon } from "lucide-react"
 
-// This is sample data.
 const data = {
   user: {
-    name: "shadcn",
+    name: "Kementerian Pertahanan",
     email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+    avatar: "/logo_kemhan.png",
   },
-  instansi: [
-    {
-      name: "KEMHAN",
-      logo: (
-        <RowsIcon
-        />
-      ),
-      plan: "Enterprise",
-    },
-  ],
   navMain: [
     {
-      title: "Home",
-      url: "/dashboard",
+      title: "Dashboard",
+      url: "#",
       icon: (
-        <HomeIcon
+        <LayoutDashboardIcon
+        />
+      ),
+    },
+    {
+      title: "Lifecycle",
+      url: "#",
+      icon: (
+        <ListIcon
+        />
+      ),
+    },
+    {
+      title: "Analytics",
+      url: "#",
+      icon: (
+        <ChartBarIcon
+        />
+      ),
+    },
+    {
+      title: "Projects",
+      url: "#",
+      icon: (
+        <FolderIcon
+        />
+      ),
+    },
+    {
+      title: "Team",
+      url: "#",
+      icon: (
+        <UsersIcon
+        />
+      ),
+    },
+  ],
+  navClouds: [
+    {
+      title: "Capture",
+      icon: (
+        <CameraIcon
         />
       ),
       isActive: true,
-    },
-    {
-      title: "Monitor",
-      url: "/dashboard/monitor/overview",
-      icon: (
-        <RobotIcon
-        />
-      ),
+      url: "#",
       items: [
         {
-          title: "Overview",
-          url: "/dashboard/monitor/overview",
+          title: "Active Proposals",
+          url: "#",
         },
         {
-          title: "Table View",
-          url: "/dashboard/monitor/table",
-        },
-        {
-          title: "Statistics",
-          url: "/dashboard/monitor/statistics",
+          title: "Archived",
+          url: "#",
         },
       ],
     },
     {
-      title: "Reports",
-      url: "/dashboard/reports",
+      title: "Proposal",
       icon: (
-        <RobotIcon
+        <FileTextIcon
+        />
+      ),
+      url: "#",
+      items: [
+        {
+          title: "Active Proposals",
+          url: "#",
+        },
+        {
+          title: "Archived",
+          url: "#",
+        },
+      ],
+    },
+    {
+      title: "Prompts",
+      icon: (
+        <FileTextIcon
+        />
+      ),
+      url: "#",
+      items: [
+        {
+          title: "Active Proposals",
+          url: "#",
+        },
+        {
+          title: "Archived",
+          url: "#",
+        },
+      ],
+    },
+  ],
+  navSecondary: [
+    {
+      title: "Settings",
+      url: "#",
+      icon: (
+        <Settings2Icon
         />
       ),
     },
     {
-      title: "Settings",
-      url: "/dashboard/settings",
+      title: "Get Help",
+      url: "#",
       icon: (
-        <GearIcon
+        <CircleHelpIcon
         />
       ),
-      
+    },
+    {
+      title: "Search",
+      url: "#",
+      icon: (
+        <SearchIcon
+        />
+      ),
+    },
+  ],
+  documents: [
+    {
+      name: "Data Library",
+      url: "#",
+      icon: (
+        <DatabaseIcon
+        />
+      ),
+    },
+    {
+      name: "Reports",
+      url: "#",
+      icon: (
+        <FileChartColumnIcon
+        />
+      ),
+    },
+    {
+      name: "Word Assistant",
+      url: "#",
+      icon: (
+        <FileIcon
+        />
+      ),
     },
   ],
 }
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.instansi} />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="data-[slot=sidebar-menu-button]:p-1.5!"
+              render={<a href="#" />}
+            >
+            <Image
+              src="/logo_waspada.png"
+              alt="Waspada logo"
+              width={36}
+              height={36}
+              className="object-contain"
+            />
+              <span className="text-base font-extrabold">WASPADA</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
+        <NavDocuments items={data.documents} />
+        <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   )
 }

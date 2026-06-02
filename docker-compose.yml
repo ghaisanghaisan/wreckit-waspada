@@ -47,6 +47,16 @@ services:
     restart: unless-stopped
     networks:
       - waspada-net
+  adminer:
+      image: adminer:latest
+      restart: always
+      ports:
+        - "8080:8080"
+      depends_on:
+        - database
+      networks:
+        - waspada-net
+
 
 networks:
   waspada-net:

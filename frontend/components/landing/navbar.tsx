@@ -45,7 +45,9 @@ export function LandingNavbar() {
 
         <div className="flex items-center gap-3">
           {/* TODO: Replace CTA text and link destination */}
-          <Button className="hidden md:inline-flex">Get Started</Button>
+          <Button className="hidden md:inline-flex">
+            <Link href="/signup">Get Started</Link>
+            </Button>
           <Button variant="outline" className="hidden md:inline-flex">
             <Link href="/login">Login</Link>
           </Button>
