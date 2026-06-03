@@ -2,25 +2,6 @@
 
 import * as React from "react"
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import {
   flexRender,
   getCoreRowModel,
   getFacetedRowModel,
@@ -40,7 +21,6 @@ import { z } from "zod"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Drawer,
   DrawerClose,
@@ -53,7 +33,6 @@ import {
 } from "@/components/ui/drawer"
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -87,7 +66,6 @@ import {
   ChevronsLeftIcon,
   ChevronsRightIcon,
   EllipsisVerticalIcon,
-  GripVerticalIcon,
 } from "lucide-react"
 
 export const schema = z.object({
@@ -100,25 +78,6 @@ export const schema = z.object({
 })
 
 // Create a separate component for the drag handle
-function DragHandle({ id, disabled }: { id: string; disabled: boolean }) {
-  const { attributes, listeners } = useSortable({
-    id,
-    disabled,
-  })
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="size-7 text-muted-foreground hover:bg-transparent"
-      disabled={disabled}
-    >
-      <GripVerticalIcon className="size-3 text-muted-foreground" />
-      <span className="sr-only">Drag to reorder</span>
-    </Button>
-  )
-}
 const sentimentBadgeClass: Record<string, string> = {
   POSITIF: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600",
   NEGATIF: "border-rose-500/40 bg-rose-500/10 text-rose-600",
@@ -131,46 +90,8 @@ const viewOptions = [
   { label: "Negative Sentiment", value: "negative" },
 ]
 
-function getColumns(
-  dragEnabled: boolean
-): ColumnDef<z.infer<typeof schema>>[] {
+function getColumns(): ColumnDef<z.infer<typeof schema>>[] {
   return [
-    {
-      id: "drag",
-      header: () => null,
-      cell: ({ row }) => (
-        <DragHandle id={row.original.id} disabled={!dragEnabled} />
-      ),
-    },
-    {
-      id: "select",
-      header: ({ table }) => (
-        <div className="flex items-center justify-center">
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected()}
-            indeterminate={
-              table.getIsSomePageRowsSelected() &&
-              !table.getIsAllPageRowsSelected()
-            }
-            onCheckedChange={(value) =>
-              table.toggleAllPageRowsSelected(!!value)
-            }
-            aria-label="Select all"
-          />
-        </div>
-      ),
-      cell: ({ row }) => (
-        <div className="flex items-center justify-center">
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
-        </div>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
     {
       accessorKey: "title",
       header: "Title",
@@ -209,55 +130,36 @@ function getColumns(
         </Badge>
       ),
     },
-    {
-      id: "actions",
-      cell: () => (
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                className="flex size-8 text-muted-foreground data-open:bg-muted"
-                size="icon"
-              />
-            }
-          >
-            <EllipsisVerticalIcon />
-            <span className="sr-only">Open menu</span>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32">
-            <DropdownMenuItem>Edit</DropdownMenuItem>
-            <DropdownMenuItem>Copy link</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-    },
+    // {
+    //   id: "actions",
+    //   cell: () => (
+    //     <DropdownMenu>
+    //       <DropdownMenuTrigger
+    //         render={
+    //           <Button
+    //             variant="ghost"
+    //             className="flex size-8 text-muted-foreground data-open:bg-muted"
+    //             size="icon"
+    //           />
+    //         }
+    //       >
+    //         <EllipsisVerticalIcon />
+    //         <span className="sr-only">Open menu</span>
+    //       </DropdownMenuTrigger>
+    //       <DropdownMenuContent align="end" className="w-32">
+    //         <DropdownMenuItem>Edit</DropdownMenuItem>
+    //         <DropdownMenuItem>Copy link</DropdownMenuItem>
+    //         <DropdownMenuSeparator />
+    //         <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
+    //       </DropdownMenuContent>
+    //     </DropdownMenu>
+    //   ),
+    // },
   ]
 }
-function DraggableRow({
-  row,
-  dragEnabled,
-}: {
-  row: Row<z.infer<typeof schema>>
-  dragEnabled: boolean
-}) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.original.id,
-    disabled: !dragEnabled,
-  })
+function DataRow({ row }: { row: Row<z.infer<typeof schema>> }) {
   return (
-    <TableRow
-      data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition,
-      }}
-    >
+    <TableRow>
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -273,7 +175,6 @@ export function DataTable({
 }) {
   const [data, setData] = React.useState(() => initialData)
   const [activeView, setActiveView] = React.useState("overview")
-  const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -284,11 +185,7 @@ export function DataTable({
     pageIndex: 0,
     pageSize: 10,
   })
-  const dragEnabled = activeView === "overview"
-  const columns = React.useMemo(
-    () => getColumns(dragEnabled),
-    [dragEnabled]
-  )
+  const columns = React.useMemo(() => getColumns(), [])
   const visibleData = React.useMemo(() => {
     if (activeView === "positive") {
       return data.filter((item) => item.sentiment === "POSITIF")
@@ -298,29 +195,16 @@ export function DataTable({
     }
     return data
   }, [data, activeView])
-  const sortableId = React.useId()
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => visibleData?.map(({ id }) => id) || [],
-    [visibleData]
-  )
   const table = useReactTable({
     data: visibleData,
     columns,
     state: {
       sorting,
       columnVisibility,
-      rowSelection,
       columnFilters,
       pagination,
     },
     getRowId: (row) => row.id.toString(),
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
@@ -332,19 +216,6 @@ export function DataTable({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
-  function handleDragEnd(event: DragEndEvent) {
-    if (!dragEnabled) {
-      return
-    }
-    const { active, over } = event
-    if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
-    }
-  }
   return (
     <Tabs
       value={activeView}
@@ -357,7 +228,7 @@ export function DataTable({
         </Label>
         <Select
           value={activeView}
-          onValueChange={setActiveView}
+          onValueChange={(value) => setActiveView(value ? value : "overview")}
           items={viewOptions}
         >
           <SelectTrigger
@@ -385,15 +256,8 @@ export function DataTable({
       </div>
       <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
         <div className="overflow-hidden rounded-lg border">
-          <DndContext
-            collisionDetection={closestCenter}
-            modifiers={[restrictToVerticalAxis]}
-            onDragEnd={handleDragEnd}
-            sensors={sensors}
-            id={sortableId}
-          >
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-muted">
+          <Table>
+            <TableHeader className="sticky top-0 z-10 bg-muted">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => {
@@ -413,18 +277,9 @@ export function DataTable({
               </TableHeader>
               <TableBody className="**:data-[slot=table-cell]:first:w-8">
                 {table.getRowModel().rows?.length ? (
-                  <SortableContext
-                    items={dataIds}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {table.getRowModel().rows.map((row) => (
-                      <DraggableRow
-                        key={row.id}
-                        row={row}
-                        dragEnabled={dragEnabled}
-                      />
-                    ))}
-                  </SortableContext>
+                  table.getRowModel().rows.map((row) => (
+                    <DataRow key={row.id} row={row} />
+                  ))
                 ) : (
                   <TableRow>
                     <TableCell
@@ -437,7 +292,6 @@ export function DataTable({
                 )}
               </TableBody>
             </Table>
-          </DndContext>
         </div>
         <div className="flex items-center justify-between px-4">
           <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
@@ -526,7 +380,7 @@ export function DataTable({
             </div>
           </div>
         </div>
-      </div>
+        </div>
     </Tabs>
   )
 }
@@ -535,11 +389,8 @@ function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
   return (
     <Drawer direction={isMobile ? "bottom" : "right"}>
       <DrawerTrigger
-        render={
-          <Button variant="link" className="w-fit px-0 text-left text-foreground" />
-        }
       >
-        {item.title}
+          <Button variant="link" className="w-fit px-0 text-left text-foreground">{item.title}</Button>
       </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader className="gap-1">
@@ -561,7 +412,7 @@ function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
           </div>
         </div>
         <DrawerFooter>
-          <DrawerClose render={<Button variant="outline">Close</Button>} />
+          <DrawerClose><Button variant="outline">Close</Button></DrawerClose>
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

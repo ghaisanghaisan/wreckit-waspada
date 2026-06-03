@@ -21,7 +21,7 @@ from typing import Iterable, List, Sequence, Tuple
 import aiohttp
 
 from .config import AppConfig, RSSSourceConfig, load_config
-from .database import TenantConfig, create_pool, fetch_existing_urls, fetch_tenant_configs, insert_rows
+from .database import TenantConfig, create_pool, fetch_existing_urls, fetch_agency_configs, insert_rows
 from .ml_engine import SentimentConfig, SentimentEngine, summarize_sentiment
 from .scraper import Candidate, collect_candidates, fetch_xml, is_relevant, normalize_keywords, parse_feed
 
@@ -109,7 +109,7 @@ async def worker(
             feed = await parse_feed(raw_xml)
             fetched = len(feed.entries)
 
-            tenants = await fetch_tenant_configs(pool)
+            tenants = await fetch_agency_configs(pool)
             if not tenants:
                 logger.info("worker.empty source=%s fetched=%d tenants=0", source_config.source, fetched)
                 if config.run_once:

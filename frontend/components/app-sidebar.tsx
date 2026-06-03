@@ -1,7 +1,4 @@
-"use client"
-
-import * as React from "react"
-
+import type { ComponentProps } from "react"
 import Image from "next/image"
 import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
@@ -16,14 +13,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, ClipboardList } from "lucide-react"
+import { auth } from "@/lib/auth"
 
 const data = {
-  user: {
-    name: "Kementerian Pertahanan",
-    email: "m@example.com",
-    avatar: "/logo_kemhan.png",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -34,10 +27,10 @@ const data = {
       ),
     },
     {
-      title: "Lifecycle",
+      title: "Reports",
       url: "#",
       icon: (
-        <ListIcon
+        <ClipboardList
         />
       ),
     },
@@ -176,7 +169,14 @@ const data = {
     },
   ],
 }
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export async function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
+  const session = await auth()
+  const user = {
+    name: session?.user?.name ?? "Waspada",
+    email: session?.user?.email ?? "hello@waspada.local",
+    avatar: "/logo_waspada.png",
+  }
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -200,11 +200,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
+        {/* <NavDocuments items={data.documents} /> */}
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   )

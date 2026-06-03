@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation"
+
 import { AppSidebar } from "@/components/app-sidebar"
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { DataTable } from "@/components/data-table"
@@ -5,12 +7,18 @@ import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 
+import { auth } from "@/lib/auth"
 import { fetchNewsArticles } from "@/lib/news-articles"
 
 export const dynamic = "force-dynamic"
 
 export default async function Page() {
-  const data = await fetchNewsArticles()
+  const session = await auth()
+  if (!session?.user?.id) {
+    redirect("/login")
+  }
+
+  const data = await fetchNewsArticles(session.user.id)
 
   return (
     <SidebarProvider

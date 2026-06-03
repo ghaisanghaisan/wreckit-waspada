@@ -1,8 +1,8 @@
 # Scripts
 
-## Register organization
+## Register agency
 
-Registers or updates an organization plus its tenant configuration.
+Registers or updates an agency plus its configuration.
 
 ```bash
 /home/ghaisan/projects/wreckit-waspada/.venv/bin/python /home/ghaisan/projects/wreckit-waspada/scripts/register_organization.py \
@@ -15,7 +15,7 @@ Registers or updates an organization plus its tenant configuration.
 
 ### Options
 
-- `--name`: Organization name (required).
+- `--name`: Agency name (required).
 - `--keywords`: Comma-separated keywords (repeatable, required).
 - `--contexts`: Comma-separated sentiment contexts (repeatable, required).
 - `--dsn`: Optional PostgreSQL DSN (overrides environment defaults).

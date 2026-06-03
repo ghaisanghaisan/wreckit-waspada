@@ -9,7 +9,7 @@ export type NewsArticleRow = {
   confidence: string
 }
 
-export async function fetchNewsArticles(limit = 50): Promise<NewsArticleRow[]> {
+export async function fetchNewsArticles(agencyId: string, limit = 50): Promise<NewsArticleRow[]> {
   const rows = await sql<
     {
       id: string
@@ -29,6 +29,7 @@ export async function fetchNewsArticles(limit = 50): Promise<NewsArticleRow[]> {
         scraped_at,
         coalesce(processed_sentiment, '{}'::jsonb) as processed_sentiment
       from news_articles
+      where organization_id = ${agencyId}
       order by scraped_at desc nulls last
       limit ${limit}
     )

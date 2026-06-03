@@ -8,11 +8,13 @@ from dataclasses import dataclass
 from typing import Iterable, List
 
 import asyncpg
-
+import bcrypt
 
 @dataclass(frozen=True)
 class RegistrationPayload:
     name: str
+    email: str
+    password: str
     keywords: List[str]
     sentiment_contexts: List[str]
 
@@ -36,20 +38,23 @@ def build_dsn() -> str:
 
 
 async def register_organization(pool: asyncpg.Pool, payload: RegistrationPayload) -> str:
+    password_bytes = payload.password.encode('utf-8')
+    salt = bcrypt.gensalt(rounds=12)
+    hashed_password = bcrypt.hashpw(password_bytes, salt).decode('utf-8')
     async with pool.acquire() as conn:
         organization_id = await conn.fetchval(
             """
-            INSERT INTO organizations (name)
-            VALUES ($1)
+            INSERT INTO agencies (name, email, password)
+            VALUES ($1, $2, $3)
             ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
             RETURNING id
             """,
-            payload.name,
+            payload.name, payload.email, hashed_password
         )
 
         updated = await conn.execute(
             """
-            UPDATE tenant_configs
+            UPDATE agency_configs
             SET keywords = $2::text[],
                 sentiment_contexts = $3::text[],
                 updated_at = now()
@@ -63,7 +68,7 @@ async def register_organization(pool: asyncpg.Pool, payload: RegistrationPayload
         if updated == "UPDATE 0":
             await conn.execute(
                 """
-                INSERT INTO tenant_configs (organization_id, keywords, sentiment_contexts)
+                INSERT INTO agency_configs (organization_id, keywords, sentiment_contexts)
                 VALUES ($1, $2::text[], $3::text[])
                 """,
                 organization_id,
@@ -76,9 +81,11 @@ async def register_organization(pool: asyncpg.Pool, payload: RegistrationPayload
 
 async def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Register or update a tenant organization configuration.",
+        description="Register or update an agency configuration.",
     )
-    parser.add_argument("--name", required=True, help="Organization name")
+    parser.add_argument("--name", required=True, help="Agency name")
+    parser.add_argument("--email", required=True, help="Agency admin email")
+    parser.add_argument("--password", required=True, help="Agency password")
     parser.add_argument(
         "--keywords",
         action="append",
@@ -108,6 +115,8 @@ async def main() -> None:
 
     payload = RegistrationPayload(
         name=args.name.strip(),
+        email=args.email,
+        password=args.password,
         keywords=keywords,
         sentiment_contexts=contexts,
     )
@@ -119,7 +128,7 @@ async def main() -> None:
     finally:
         await pool.close()
 
-    print(f"Registered organization '{payload.name}' with id {organization_id}.")
+    print(f"Registered agency '{payload.name}' with id {organization_id}.")
 
 
 if __name__ == "__main__":

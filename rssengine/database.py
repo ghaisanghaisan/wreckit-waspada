@@ -40,12 +40,12 @@ async def fetch_existing_urls(pool: asyncpg.Pool, organization_id: str, urls: Se
     return {row["url"] for row in rows}
 
 
-async def fetch_tenant_configs(pool: asyncpg.Pool) -> Sequence[TenantConfig]:
+async def fetch_agency_configs(pool: asyncpg.Pool) -> Sequence[TenantConfig]:
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
             SELECT organization_id, keywords, sentiment_contexts
-            FROM tenant_configs
+            FROM agency_configs
             ORDER BY created_at ASC
             """
         )
