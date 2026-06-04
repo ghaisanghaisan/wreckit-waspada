@@ -41,12 +41,17 @@ services:
       dockerfile: ./rssengine/Dockerfile
     env_file:
       - .env
+    environment:
+      HF_HOME: /cache/huggingface
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
     depends_on:
       database:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - waspada-net
+    volumes:
+      - hf-cache:/cache/huggingface
   adminer:
       image: adminer:latest
       restart: always
@@ -64,3 +69,4 @@ networks:
 
 volumes:
   db-data:
+  hf-cache:

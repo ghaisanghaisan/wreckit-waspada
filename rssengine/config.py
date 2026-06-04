@@ -28,6 +28,10 @@ class AppConfig:
     sentiment_batch_size: int
     sentiment_max_length: int
     url_cache_maxlen: int
+    housekeeping_interval_seconds: int
+    news_retention_days: int
+    weekly_report_interval_seconds: int
+    weekly_report_window_days: int
 
 
 GLOBAL_KEYWORDS: List[str] = [
@@ -123,4 +127,8 @@ def load_config() -> AppConfig:
         sentiment_batch_size=int(os.getenv("SENTIMENT_BATCH_SIZE", "16")),
         sentiment_max_length=int(os.getenv("SENTIMENT_MAX_LENGTH", "256")),
         url_cache_maxlen=int(os.getenv("URL_CACHE_MAXLEN", "500")),
+        housekeeping_interval_seconds=int(os.getenv("HOUSEKEEPING_INTERVAL_SECONDS", "86400")),
+        news_retention_days=int(os.getenv("NEWS_RETENTION_DAYS", "30")),
+        weekly_report_interval_seconds=int(os.getenv("WEEKLY_REPORT_INTERVAL_SECONDS", "5")),
+        weekly_report_window_days=int(os.getenv("WEEKLY_REPORT_WINDOW_DAYS", "7")),
     )

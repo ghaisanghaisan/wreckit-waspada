@@ -48,6 +48,20 @@ CREATE TABLE IF NOT EXISTS agency_configs (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_configs_org ON agency_configs (organization_id);
 
+-- report_requests table
+CREATE TABLE IF NOT EXISTS report_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+  urls JSONB NOT NULL DEFAULT '[]'::jsonb,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  generated_report TEXT,
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_report_requests_status ON report_requests (status);
+CREATE INDEX IF NOT EXISTS idx_report_requests_requested_at ON report_requests (requested_at);
+
 -- social_posts table
 CREATE TABLE IF NOT EXISTS social_posts (
   id VARCHAR(255) PRIMARY KEY,

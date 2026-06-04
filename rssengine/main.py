@@ -6,11 +6,8 @@ import os
 import transformers
 
 # Set standard Python logging to DEBUG globally
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+# logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 
-
-# Explicitly enable tqdm progress bars for downloads
-os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "0"
 
 import asyncio
 import random
@@ -22,7 +19,9 @@ import aiohttp
 
 from .config import AppConfig, RSSSourceConfig, load_config
 from .database import TenantConfig, create_pool, fetch_existing_urls, fetch_agency_configs, insert_rows
+from .housekeeping import housekeeping_worker
 from .ml_engine import SentimentConfig, SentimentEngine, summarize_sentiment
+from .reporting import weekly_report_worker
 from .scraper import Candidate, collect_candidates, fetch_xml, is_relevant, normalize_keywords, parse_feed
 
 
@@ -176,6 +175,8 @@ async def main() -> None:
             asyncio.create_task(worker(config, source, pool, session, sentiment_engine, url_cache), name=source.source)
             for source in config.sources
         ]
+        # tasks.append(asyncio.create_task(housekeeping_worker(config, pool), name="housekeeping"))
+        tasks.append(asyncio.create_task(weekly_report_worker(config, pool), name="weekly_report"))
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for task, result in zip(tasks, results):
             if isinstance(result, Exception):
