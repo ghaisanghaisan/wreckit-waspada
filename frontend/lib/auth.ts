@@ -44,6 +44,8 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        console.log(credentials.password)
+        console.log(agency.password)
         const isPasswordValid = await compare(credentials.password, agency.password)
         if (!isPasswordValid) {
           return null

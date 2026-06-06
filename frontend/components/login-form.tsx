@@ -42,6 +42,7 @@ export function LoginForm({
     setIsLoading(false)
 
     if (result?.error) {
+      console.log(result)
       setError("Invalid email or password.")
       return
     }
