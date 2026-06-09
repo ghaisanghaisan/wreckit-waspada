@@ -53,7 +53,7 @@ export function FeaturesSection() {
             return (
               <AnimateOnView
                 key={feature.title}
-                animation="slideInUp"
+                animation="slideInLeft"
                 delay={idx * 0.15}
               >
                 <Card className="bg-background/80">

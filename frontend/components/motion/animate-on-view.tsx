@@ -1,7 +1,6 @@
 "use client";
 
 import { motion, useInView } from "motion/react";
-import type { InViewOptions } from "motion/react";
 import { ReactNode, useRef } from "react";
 
 interface AnimateOnViewProps {
@@ -17,7 +16,7 @@ interface AnimateOnViewProps {
     | "scaleIn"
     | "rotateIn";
   once?: boolean;
-  margin?: InViewOptions["margin"];
+  margin?: any;
 }
 
 const animationVariants = {
