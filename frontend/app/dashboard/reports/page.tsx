@@ -179,26 +179,6 @@ export default function Reports() {
                   </CardHeader>
                 </Card>
 
-                {/* Draft Reports Card */}
-                <Card className="bg-linear-to-t from-amber-500/5 to-card shadow-xs dark:bg-card">
-                  <CardHeader>
-                    <CardDescription>Draft Reports</CardDescription>
-                    <CardTitle className="text-2xl font-semibold tabular-nums">
-                      {summary.draftReports}
-                    </CardTitle>
-                  </CardHeader>
-                </Card>
-
-                {/* Final Reports Card */}
-                <Card className="bg-linear-to-t from-emerald-500/5 to-card shadow-xs dark:bg-card">
-                  <CardHeader>
-                    <CardDescription>Final Reports</CardDescription>
-                    <CardTitle className="text-2xl font-semibold tabular-nums">
-                      {summary.finalReports}
-                    </CardTitle>
-                  </CardHeader>
-                </Card>
-
                 {/* Pending Articles Card */}
                 <Card className="bg-linear-to-t from-blue-500/5 to-card shadow-xs dark:bg-card">
                   <CardHeader>
